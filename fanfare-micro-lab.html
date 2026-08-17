@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Panel Puzzle — Fanfare Micro Lab</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#05090a; --card:#0b1113; --text:#efffff; --muted:#8da4a1;
+  --accent:#63f6ff; --pink:#ff5de4; --good:#a8ffca;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{min-height:100dvh;padding:12px}
+.wrap{width:min(860px,100%);margin:auto;display:grid;gap:10px}
+.panel,.card{
+  border:1px solid rgba(99,246,255,.14);
+  border-radius:16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.006)),var(--card);
+}
+.panel{padding:14px}
+h1{margin:0;font-size:17px;letter-spacing:.07em;text-transform:uppercase}
+.sub{margin-top:6px;color:var(--muted);font-size:10px;line-height:1.5}
+.ready{
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px
+}
+button{
+  min-height:43px;padding:0 12px;border-radius:10px;
+  border:1px solid rgba(255,255,255,.11);
+  background:#142023;color:#efffff;
+  font:800 9px system-ui,sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+button.main{border-color:rgba(168,255,202,.35);background:#14261c}
+.status{font:900 9px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffb8ef}
+.controls{display:grid;gap:10px}
+.row{display:grid;grid-template-columns:110px 1fr 80px;gap:9px;align-items:center}
+.row label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.val{font:900 10px ui-monospace,SFMono-Regular,Menlo,monospace;text-align:right}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.card{padding:13px}
+.card h2{margin:0;font-size:12px;letter-spacing:.05em;text-transform:uppercase}
+.tag{
+  display:inline-block;margin-top:7px;padding:4px 6px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.09);color:#aac0bd;
+  font:800 8px ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.desc{margin-top:8px;color:var(--muted);font-size:9px;line-height:1.45;min-height:42px}
+.tests{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.tests button{padding:0 5px}
+.tests button:last-child{border-color:rgba(255,93,228,.38);background:#251526}
+.wave{
+  margin-top:9px;font:800 8px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#7f9996
+}
+.switches{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.switches button.active{border-color:rgba(168,255,202,.45);background:#163023}
+.note{font-size:9px;line-height:1.5;color:var(--muted)}
+@media(max-width:680px){
+  .cards{grid-template-columns:1fr}
+  .row{grid-template-columns:92px 1fr 68px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<section class="panel">
+  <h1>Fanfare Micro Lab</h1>
+  <div class="sub">
+    Quattro famiglie melodiche. Ogni chain aggiunge materiale musicale vero:
+    frase → risposta → discesa → risalita → cadenza.
+  </div>
+
+  <div class="ready">
+    <button id="unlock" class="main">ENABLE AUDIO</button>
+    <span id="status" class="status">AUDIO LOCKED</span>
+  </div>
+</section>
+
+<section class="panel controls">
+  <div class="row">
+    <label>Tempo</label>
+    <input id="tempo" type="range" min="0.70" max="1.35" value="1.00" step="0.05">
+    <span id="tempoV" class="val">1.00×</span>
+  </div>
+  <div class="row">
+    <label>Note length</label>
+    <input id="length" type="range" min="0.65" max="1.80" value="1.15" step="0.05">
+    <span id="lengthV" class="val">1.15×</span>
+  </div>
+  <div class="row">
+    <label>Drums</label>
+    <input id="drums" type="range" min="0" max="1.8" value="0.95" step="0.05">
+    <span id="drumsV" class="val">0.95×</span>
+  </div>
+
+  <div class="switches">
+    <button id="drumOn" class="active">CHIP DRUMS ON</button>
+    <button id="drumOff">DRUMS OFF</button>
+  </div>
+</section>
+
+<main class="cards">
+
+<section class="card">
+  <h2>A · Triumph</h2>
+  <div class="tag">CLASSIC / CLEAN</div>
+  <div class="desc">
+    Apertura di triade maggiore, piccola risposta verso il basso, poi una seconda salita e chiusura alta.
+    È la più “vittoria RPG”.
+  </div>
+  <div class="wave">↑↑↑ · ↓ · ↑↑ · ★</div>
+  <div class="tests">
+    <button data-family="A" data-depth="2">×2</button>
+    <button data-family="A" data-depth="4">×4</button>
+    <button data-family="A" data-depth="6">×6</button>
+    <button data-family="A" data-depth="9">×9</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>B · Signal Answer</h2>
+  <div class="tag">ALIEN / CALL–RESPONSE</div>
+  <div class="desc">
+    Una frase “chiama”, una seconda le risponde più in alto. Le chain grandi aggiungono una terza risposta.
+    Meno allegra, più nostra.
+  </div>
+  <div class="wave">↑↑ · ↓↑ · ↑↑↑ · ★</div>
+  <div class="tests">
+    <button data-family="B" data-depth="2">×2</button>
+    <button data-family="B" data-depth="4">×4</button>
+    <button data-family="B" data-depth="6">×6</button>
+    <button data-family="B" data-depth="9">×9</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>C · Spiral</h2>
+  <div class="tag">ARPEGGIO / WAVE</div>
+  <div class="desc">
+    Sale, ricade di tre note, poi ripete la stessa forma trasposta più in alto.
+    È quella più vicina alla tua idea “sale-scende-risale”.
+  </div>
+  <div class="wave">↗ ↘ · ↗↗ ↘ · ↗↗↗ ★</div>
+  <div class="tests">
+    <button data-family="C" data-depth="2">×2</button>
+    <button data-family="C" data-depth="4">×4</button>
+    <button data-family="C" data-depth="6">×6</button>
+    <button data-family="C" data-depth="9">×9</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>D · Broken Victory</h2>
+  <div class="tag">ODD / DIGITAL</div>
+  <div class="desc">
+    Fanfara tonale ma con una nota “storta” nella risposta, poi risolve correttamente.
+    Più misteriosa e meno da gioco fantasy classico.
+  </div>
+  <div class="wave">↑↑ · ?↓ · ↑↑ · ★</div>
+  <div class="tests">
+    <button data-family="D" data-depth="2">×2</button>
+    <button data-family="D" data-depth="4">×4</button>
+    <button data-family="D" data-depth="6">×6</button>
+    <button data-family="D" data-depth="9">×9</button>
+  </div>
+</section>
+
+</main>
+
+<section class="panel note">
+  Tutte le melodie sono sintetizzate localmente con Web Audio: lead SAW + una seconda voce più sottile.
+  I drums sono kick sintetico + noise channel graffiante, non sample esterni.
+</section>
+
+</div>
+
+<script>
+(()=>{
+let ac=null,ready=false,drumsOn=true;
+
+const tempo=document.getElementById('tempo');
+const length=document.getElementById('length');
+const drums=document.getElementById('drums');
+
+function audio(){
+  if(!ac) ac=new (window.AudioContext||window.webkitAudioContext)();
+  return ac;
+}
+
+async function unlock(){
+  const a=audio();
+  try{
+    const b=a.createBuffer(1,1,a.sampleRate);
+    const s=a.createBufferSource();
+    s.buffer=b;s.connect(a.destination);s.start();
+    await a.resume();
+  }catch(e){}
+  ready=a.state==='running';
+  document.getElementById('status').textContent=ready?'AUDIO READY ✓':'AUDIO BLOCKED';
+  document.getElementById('status').style.color=ready?'#a8ffca':'#ffb8ef';
+  if(ready){
+    tone(440,.04,.012,0,'sine',660);
+    tone(660,.05,.010,.06,'sine',880);
+  }
+}
+
+function T(){return Number(tempo.value)}
+function L(){return Number(length.value)}
+function DG(){return Number(drums.value)}
+
+function tone(freq,d=.07,g=.018,delay=0,type='sawtooth',endFreq=null){
+  const a=audio();
+  const st=a.currentTime+delay/T();
+  const du=d*L();
+  const o=a.createOscillator(),v=a.createGain();
+  o.type=type;
+  o.frequency.setValueAtTime(freq,st);
+  if(endFreq) o.frequency.exponentialRampToValueAtTime(endFreq,st+du);
+  v.gain.setValueAtTime(.0001,st);
+  v.gain.exponentialRampToValueAtTime(g,st+.006);
+  v.gain.exponentialRampToValueAtTime(.0001,st+du);
+  o.connect(v).connect(a.destination);
+  o.start(st);o.stop(st+du+.03);
+}
+
+function noise(d=.03,g=.008,delay=0,center=2400){
+  const a=audio();
+  const st=a.currentTime+delay/T(),du=d*L();
+  const len=Math.max(1,Math.floor(a.sampleRate*du));
+  const b=a.createBuffer(1,len,a.sampleRate),data=b.getChannelData(0);
+  let h=0;
+  for(let i=0;i<len;i++){if(i%8===0)h=Math.round((Math.random()*2-1)*5)/5;data[i]=h}
+  const s=a.createBufferSource(),f=a.createBiquadFilter(),v=a.createGain();
+  f.type='bandpass';f.frequency.value=center;f.Q.value=1.4;
+  v.gain.setValueAtTime(g,st);v.gain.exponentialRampToValueAtTime(.0001,st+du);
+  s.buffer=b;s.connect(f).connect(v).connect(a.destination);s.start(st);
+}
+
+function kick(delay=0,s=1){
+  if(!drumsOn)return;
+  tone(110,.06,.017*s*DG(),delay,'square',42);
+}
+function snare(delay=0,s=1){
+  if(!drumsOn)return;
+  noise(.038,.011*s*DG(),delay,1750);
+  tone(190,.024,.004*s*DG(),delay,'square',135);
+}
+function hat(delay=0,s=1){
+  if(!drumsOn)return;
+  noise(.014,.005*s*DG(),delay,4200);
+}
+function crash(delay=0,s=1){
+  if(!drumsOn)return;
+  noise(.10,.010*s*DG(),delay,2900);
+}
+
+function hz(root,semi){return root*Math.pow(2,semi/12)}
+
+// More musical phrase construction:
+// Every "unit" is an interval in semitones relative to root.
+// Depth adds whole phrase fragments, not arbitrary extra notes.
+const phrases={
+ A:{
+   2:[0,4,7,12],
+   4:[0,4,7,12, 9,7,11,14],
+   6:[0,4,7,12, 9,7,11,14, 12,16,19],
+   9:[0,4,7,12, 9,7,11,14, 12,16,19,16,14,18,21,24]
+ },
+ B:{
+   2:[0,7,12,10],
+   4:[0,7,12,10, 5,9,14,12],
+   6:[0,7,12,10, 5,9,14,12, 7,12,16,19],
+   9:[0,7,12,10, 5,9,14,12, 7,12,16,19, 14,12,17,21,24]
+ },
+ C:{
+   2:[0,4,7,12],
+   4:[0,4,7,12, 9,7, 4,9,12,16],
+   6:[0,4,7,12, 9,7, 4,9,12,16, 14,12, 9,14,17,21],
+   9:[0,4,7,12, 9,7, 4,9,12,16, 14,12, 9,14,17,21, 19,17,14,19,23,26]
+ },
+ D:{
+   2:[0,4,7,11],
+   4:[0,4,7,11, 8,6,10,14],
+   6:[0,4,7,11, 8,6,10,14, 11,15,18],
+   9:[0,4,7,11, 8,6,10,14, 11,15,18, 15,13,17,20,24]
+ }
+};
+
+const rootByFamily={A:440,B:415.30,C:392,D:440};
+
+function play(family,depth){
+  if(!ready)return;
+  const notes=phrases[family][depth];
+  const root=rootByFamily[family];
+  const sp=(family==='C'?.072:.078);
+
+  notes.forEach((st,i)=>{
+    const t=i*sp;
+    const f=hz(root,st);
+    const next=hz(root,notes[Math.min(i+1,notes.length-1)]);
+
+    // Lead
+    tone(f,.070,.015,t,'sawtooth',next);
+
+    // thinner harmony/shine, selective
+    if(i%3===0 || i===notes.length-1){
+      const harmony = family==='D' ? 7 : 12;
+      tone(hz(root,st+harmony),.045,.0045,t+.006,'square');
+    }
+  });
+
+  // phrase-aware percussion
+  kick(0,1);
+  if(notes.length>=4){hat(sp*1,.6);snare(sp*3,.75)}
+  if(notes.length>=8){kick(sp*4,.75);hat(sp*5,.55);snare(sp*7,.85)}
+  if(notes.length>=11){kick(sp*8,.85);hat(sp*9,.6);snare(sp*10,.9)}
+  if(notes.length>=15){kick(sp*12,.95);hat(sp*13,.65);snare(sp*14,1)}
+  crash(sp*(notes.length-1),depth>=9?1.1:.85);
+}
+
+document.getElementById('unlock').addEventListener('pointerdown',async e=>{
+  e.preventDefault();await unlock();
+  if(ready)e.currentTarget.textContent='AUDIO ENABLED ✓';
+});
+
+document.querySelectorAll('[data-family]').forEach(b=>{
+  b.addEventListener('pointerdown',async e=>{
+    e.preventDefault();
+    if(!ready)await unlock();
+    if(ready)play(b.dataset.family,Number(b.dataset.depth));
+  });
+});
+
+document.getElementById('drumOn').addEventListener('click',()=>{
+  drumsOn=true;
+  drumOn.classList.add('active');drumOff.classList.remove('active');
+});
+document.getElementById('drumOff').addEventListener('click',()=>{
+  drumsOn=false;
+  drumOff.classList.add('active');drumOn.classList.remove('active');
+});
+
+function sync(){
+  tempoV.textContent=Number(tempo.value).toFixed(2)+'×';
+  lengthV.textContent=Number(length.value).toFixed(2)+'×';
+  drumsV.textContent=Number(drums.value).toFixed(2)+'×';
+}
+[tempo,length,drums].forEach(x=>x.addEventListener('input',sync));
+sync();
+
+})();
+</script>
+</body>
+</html>
