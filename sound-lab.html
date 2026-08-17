@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Panel Puzzle — Super Sound Lab</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#05090a;
+  --card:#0b1113;
+  --card2:#0e1719;
+  --text:#efffff;
+  --muted:#8da4a1;
+  --accent:#63f6ff;
+  --accent2:#ff5de4;
+  --good:#a8ffca;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{min-height:100dvh;padding:10px}
+.wrap{width:min(980px,100%);margin:0 auto;display:grid;gap:10px}
+.header,.card,.global,.summary{
+  border:1px solid rgba(99,246,255,.13);
+  border-radius:16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.022),rgba(255,255,255,.005)),var(--card);
+}
+.header{padding:15px 16px}
+h1{margin:0;font-size:17px;letter-spacing:.07em;text-transform:uppercase}
+.subtitle{margin-top:6px;font-size:10px;line-height:1.5;color:var(--muted)}
+.badge{
+  display:inline-block;margin-top:8px;padding:5px 7px;border-radius:999px;
+  font:800 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  border:1px solid rgba(168,255,202,.25);color:var(--good)
+}
+.global{padding:12px 14px;display:grid;gap:11px}
+.control-row{
+  display:grid;grid-template-columns:105px 1fr 96px;gap:9px;align-items:center
+}
+.control-row label{
+  font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.065em
+}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.value{
+  font:900 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  text-align:right;color:#eaffff
+}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.card{padding:13px}
+.card h2{margin:0;font-size:12px;letter-spacing:.055em;text-transform:uppercase}
+.desc{margin-top:5px;min-height:31px;font-size:9px;line-height:1.45;color:var(--muted)}
+.variant-label{margin-top:11px;font:800 8px ui-monospace,SFMono-Regular,Menlo,monospace;color:#78918e;letter-spacing:.08em}
+.variants,.tests{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+button{
+  border:1px solid rgba(255,255,255,.10);
+  background:#162124;color:#efffff;
+  border-radius:9px;min-height:38px;padding:0 10px;
+  font:800 9px system-ui,sans-serif;cursor:pointer;
+  -webkit-tap-highlight-color:transparent
+}
+button.variant{min-width:47px}
+button.variant.active{
+  border-color:rgba(99,246,255,.55);
+  background:#183336;color:#dfffff
+}
+button.test{
+  border-color:rgba(255,255,255,.13);
+  background:#111b1d
+}
+button.major{
+  border-color:rgba(255,93,228,.36);
+  background:#251526
+}
+button.green{
+  border-color:rgba(168,255,202,.32);
+  background:#14271d
+}
+.chain-mode{
+  margin-top:8px;padding:8px 9px;border-radius:10px;
+  border:1px solid rgba(255,255,255,.065);
+  background:rgba(255,255,255,.018)
+}
+.chain-mode .title{font-size:8px;color:var(--muted);letter-spacing:.065em;text-transform:uppercase}
+.radio-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.radio-row button.active{border-color:rgba(168,255,202,.45);background:#163023}
+.summary{padding:12px 14px}
+.summary pre{
+  margin:8px 0 0;white-space:pre-wrap;word-break:break-word;
+  font:800 9px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
+  color:#bcd3d0
+}
+.footer{padding:2px 3px 10px;color:#728a87;font-size:9px;line-height:1.5}
+@media(max-width:720px){
+  .cards{grid-template-columns:1fr}
+  .desc{min-height:0}
+  .control-row{grid-template-columns:82px 1fr 78px}
+  button{min-height:43px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="header">
+    <h1>Panel Puzzle · Super Sound Lab</h1>
+    <div class="subtitle">
+      Preset A = riferimento V0.9 quando possibile. B/C = alternative da confrontare.
+      Su iPhone il primo tap sblocca Web Audio.
+    </div>
+    <div class="badge">MOBILE / GITHUB PAGES READY</div>
+  </section>
+
+  <section class="global">
+    <div class="control-row">
+      <label>Wave override</label>
+      <input id="wave" type="range" min="0" max="4" value="0" step="1">
+      <span class="value" id="waveVal">ORIGINAL</span>
+    </div>
+    <div class="control-row">
+      <label>Duration</label>
+      <input id="duration" type="range" min="0.40" max="2.50" value="1" step="0.05">
+      <span class="value" id="durationVal">1.00×</span>
+    </div>
+    <div class="control-row">
+      <label>Pitch</label>
+      <input id="pitch" type="range" min="0.70" max="1.40" value="1" step="0.02">
+      <span class="value" id="pitchVal">1.00×</span>
+    </div>
+    <div class="control-row">
+      <label>Volume</label>
+      <input id="volume" type="range" min="0.20" max="1.50" value="1" step="0.05">
+      <span class="value" id="volumeVal">1.00×</span>
+    </div>
+  </section>
+
+  <main class="cards">
+    <section class="card" data-group="movement">
+      <h2>Movement / Landing</h2>
+      <div class="desc">Swap e piccoli landing. Test in mini-sequenza, non come singolo beep.</div>
+      <div class="variant-label">VARIANT</div>
+      <div class="variants">
+        <button class="variant active" data-v="A">A · V0.9</button>
+        <button class="variant" data-v="B">B · CRISP</button>
+        <button class="variant" data-v="C">C · SOFT</button>
+      </div>
+      <div class="tests">
+        <button class="test" data-test="movement">SWAP + 4 LANDINGS</button>
+      </div>
+    </section>
+
+    <section class="card" data-group="pop">
+      <h2>Pop / Combo</h2>
+      <div class="desc">La sequenza crescente dei pannelli che spariscono + cue della combo finale.</div>
+      <div class="variant-label">VARIANT</div>
+      <div class="variants">
+        <button class="variant active" data-v="A">A · V0.9</button>
+        <button class="variant" data-v="B">B · GLASSY</button>
+        <button class="variant" data-v="C">C · CHUNKY</button>
+      </div>
+      <div class="tests">
+        <button class="test" data-test="combo4">COMBO ×4</button>
+        <button class="test" data-test="combo6">COMBO ×6</button>
+        <button class="test major" data-test="combo10">COMBO ×10</button>
+      </div>
+    </section>
+
+    <section class="card" data-group="chain">
+      <h2>Chain</h2>
+      <div class="desc">Intere chain simulate: clear → pausa → clear successivo. Ideale per testare il crescendo.</div>
+      <div class="variant-label">CHAIN CUE VARIANT</div>
+      <div class="variants">
+        <button class="variant active" data-v="A">A · V0.9</button>
+        <button class="variant" data-v="B">B · RISING</button>
+        <button class="variant" data-v="C">C · ALIEN</button>
+      </div>
+
+      <div class="chain-mode">
+        <div class="title">Pop pitch across generations</div>
+        <div class="radio-row">
+          <button id="resetMode">CURRENT · RESET</button>
+          <button id="continuousMode" class="active">NEW · CONTINUOUS</button>
+        </div>
+      </div>
+
+      <div class="tests">
+        <button class="test" data-test="chain3">CHAIN ×3</button>
+        <button class="test" data-test="chain5">CHAIN ×5</button>
+        <button class="test major" data-test="chain9">CHAIN ×9</button>
+      </div>
+    </section>
+
+    <section class="card" data-group="fanfare">
+      <h2>Experimental Chain-End Fanfare</h2>
+      <div class="desc">Non è ancora nel gioco. Parte solo DOPO che una chain è definitivamente finita.</div>
+      <div class="variant-label">VARIANT</div>
+      <div class="variants">
+        <button class="variant active" data-v="A">A · TINY ARCADE</button>
+        <button class="variant" data-v="B">B · ASCENT</button>
+        <button class="variant" data-v="C">C · SIGNAL</button>
+      </div>
+      <div class="tests">
+        <button class="test" data-test="fan2">END ×2</button>
+        <button class="test" data-test="fan4">END ×4</button>
+        <button class="test major" data-test="fan7">END ×7+</button>
+      </div>
+    </section>
+
+    <section class="card" data-group="garbage">
+      <h2>Garbage Impact</h2>
+      <div class="desc">THUD in base alla massa. Qui non c'è shake grafico: stai giudicando solo il suono.</div>
+      <div class="variant-label">VARIANT</div>
+      <div class="variants">
+        <button class="variant active" data-v="A">A · V0.9</button>
+        <button class="variant" data-v="B">B · INDUSTRIAL</button>
+        <button class="variant" data-v="C">C · DEEP</button>
+      </div>
+      <div class="tests">
+        <button class="test" data-test="garbage3">3×1</button>
+        <button class="test" data-test="garbage6">6×1</button>
+        <button class="test major" data-test="garbage24">6×4</button>
+      </div>
+    </section>
+
+    <section class="card" data-group="convert">
+      <h2>Garbage Conversion</h2>
+      <div class="desc">Conversione completa riga-per-riga: celle → release → nuova riga.</div>
+      <div class="variant-label">VARIANT</div>
+      <div class="variants">
+        <button class="variant active" data-v="A">A · V0.9</button>
+        <button class="variant" data-v="B">B · DECODE</button>
+        <button class="variant" data-v="C">C · CRYSTAL</button>
+      </div>
+      <div class="tests">
+        <button class="test" data-test="convert61">CONVERT 6×1</button>
+        <button class="test major" data-test="convert63">CONVERT 6×3</button>
+      </div>
+    </section>
+
+    <section class="card" data-group="incoming">
+      <h2>Incoming / Attack</h2>
+      <div class="desc">Cue di garbage in arrivo + successivo impatto. Utile soprattutto per il VS.</div>
+      <div class="variant-label">VARIANT</div>
+      <div class="variants">
+        <button class="variant active" data-v="A">A · V0.9</button>
+        <button class="variant" data-v="B">B · WARNING</button>
+        <button class="variant" data-v="C">C · SUBTLE</button>
+      </div>
+      <div class="tests">
+        <button class="test major" data-test="incoming">INCOMING → THUD</button>
+      </div>
+    </section>
+
+    <section class="card" data-group="gameover">
+      <h2>Game Over / Withdrawn</h2>
+      <div class="desc">Solo audio. La grafica REACHED/WITHDRAWN la progetteremo separatamente.</div>
+      <div class="variant-label">VARIANT</div>
+      <div class="variants">
+        <button class="variant active" data-v="A">A · V0.9</button>
+        <button class="variant" data-v="B">B · FALLING</button>
+        <button class="variant" data-v="C">C · FADE</button>
+      </div>
+      <div class="tests">
+        <button class="test major" data-test="gameover">WITHDRAWN SEQUENCE</button>
+      </div>
+    </section>
+  </main>
+
+  <section class="summary">
+    <button class="green" id="copy">COPY CURRENT SETTINGS</button>
+    <pre id="summaryText"></pre>
+  </section>
+
+  <div class="footer">
+    Se un test sembra troppo forte sugli speaker del telefono, regola prima Volume.
+    Wave override su ORIGINAL mantiene le forme d'onda previste dal preset; le altre posizioni forzano tutto su una singola wave per confronto.
+  </div>
+</div>
+
+<script>
+(() => {
+  let ac=null;
+  let chainContinuous=true;
+
+  const groupVariant={
+    movement:'A',pop:'A',chain:'A',fanfare:'A',
+    garbage:'A',convert:'A',incoming:'A',gameover:'A'
+  };
+
+  const waveNames=['ORIGINAL','SQUARE','TRIANGLE','SAW','SINE'];
+  const waveTypes=[null,'square','triangle','sawtooth','sine'];
+
+  const wave=document.getElementById('wave');
+  const duration=document.getElementById('duration');
+  const pitch=document.getElementById('pitch');
+  const volume=document.getElementById('volume');
+
+  function ensureAudio(){
+    if(!ac) ac=new (window.AudioContext||window.webkitAudioContext)();
+    if(ac.state==='suspended') ac.resume();
+    return ac;
+  }
+
+  function dur(){return Number(duration.value)}
+  function pit(){return Number(pitch.value)}
+  function vol(){return Number(volume.value)}
+  function forcedWave(){return waveTypes[Number(wave.value)]}
+
+  function tone(freq,durationSec=.055,gain=.028,type='square',delay=0,endFreq=null){
+    const audio=ensureAudio();
+    const d=Math.max(.012,durationSec*dur());
+    const start=audio.currentTime+delay*dur();
+    const osc=audio.createOscillator();
+    const amp=audio.createGain();
+
+    osc.type=forcedWave()||type;
+    osc.frequency.setValueAtTime(Math.max(20,freq*pit()),start);
+
+    if(endFreq){
+      osc.frequency.exponentialRampToValueAtTime(
+        Math.max(20,endFreq*pit()),
+        start+d
+      );
+    }
+
+    const g=Math.max(.0001,gain*vol());
+    amp.gain.setValueAtTime(.0001,start);
+    amp.gain.exponentialRampToValueAtTime(g,start+Math.min(.008,d*.18));
+    amp.gain.exponentialRampToValueAtTime(.0001,start+d);
+
+    osc.connect(amp).connect(audio.destination);
+    osc.start(start);
+    osc.stop(start+d+.03);
+  }
+
+  function noise(durationSec=.035,gain=.010,delay=0,center=2100){
+    const audio=ensureAudio();
+    const d=Math.max(.012,durationSec*dur());
+    const sr=audio.sampleRate;
+    const length=Math.max(1,Math.floor(sr*d));
+    const buffer=audio.createBuffer(1,length,sr);
+    const data=buffer.getChannelData(0);
+
+    let held=0;
+    for(let i=0;i<length;i++){
+      if(i%10===0) held=Math.round((Math.random()*2-1)*5)/5;
+      data[i]=held;
+    }
+
+    const src=audio.createBufferSource();
+    const filter=audio.createBiquadFilter();
+    const amp=audio.createGain();
+
+    filter.type='bandpass';
+    filter.frequency.value=center*pit();
+    filter.Q.value=1.4;
+
+    const start=audio.currentTime+delay*dur();
+    amp.gain.setValueAtTime(Math.max(.0001,gain*vol()),start);
+    amp.gain.exponentialRampToValueAtTime(.0001,start+d);
+
+    src.buffer=buffer;
+    src.connect(filter).connect(amp).connect(audio.destination);
+    src.start(start);
+  }
+
+  function later(ms,fn){
+    setTimeout(fn,ms*dur());
+  }
+
+  // ------------------------------------------------------
+  // MOVEMENT
+  // ------------------------------------------------------
+  function swap(v='A'){
+    if(v==='A'){
+      tone(255,.035,.014,'square',0,315); noise(.022,.004);
+    }else if(v==='B'){
+      tone(390,.022,.012,'square',0,520); noise(.014,.003,0,3200);
+    }else{
+      tone(210,.045,.010,'triangle',0,255);
+    }
+  }
+
+  function land(v='A',delay=0){
+    if(v==='A'){
+      const base=1550;
+      tone(base,.022,.005,'square',delay,base*.72);
+      noise(.018,.004,delay,2500);
+    }else if(v==='B'){
+      tone(1850,.016,.0045,'square',delay,1200);
+      noise(.012,.0035,delay,3500);
+    }else{
+      tone(820,.032,.004,'triangle',delay,690);
+    }
+  }
+
+  function movementSequence(){
+    const v=groupVariant.movement;
+    swap(v);
+    for(let i=0;i<4;i++) later(115+i*70,()=>land(v));
+  }
+
+  // ------------------------------------------------------
+  // POP / COMBO
+  // ------------------------------------------------------
+  function popNote(index,v='A',delay=0){
+    const semitones=index*2.35;
+    let base=330*Math.pow(2,semitones/12);
+
+    // soft cap curve for absurdly long chains
+    if(base>2600) base=2600+(base-2600)*.16;
+    if(base>3600) base=3600;
+
+    if(v==='A'){
+      tone(base,.052,.024,'square',delay,base*1.13);
+      tone(base*1.97,.030,.009,'square',delay+.008,base*1.60);
+      noise(.028,.008,delay+.004,2100);
+    }else if(v==='B'){
+      tone(base*1.12,.045,.018,'triangle',delay,base*1.38);
+      tone(base*2.02,.026,.007,'sine',delay+.006,base*2.18);
+      noise(.020,.0045,delay+.003,3400);
+    }else{
+      tone(base*.78,.062,.026,'square',delay,base*.92);
+      noise(.035,.010,delay+.002,1500);
+    }
+  }
+
+  function comboCue(size,v='A',delay=0){
+    if(size<=3)return;
+    const extra=Math.min(8,size-4);
+
+    if(v==='A'){
+      tone(470+extra*22,.075,.024,'square',delay,650+extra*25);
+      tone(720+extra*30,.065,.017,'square',delay+.042,900+extra*35);
+      noise(.045,.008,delay+.018,2100);
+    }else if(v==='B'){
+      tone(620+extra*25,.060,.019,'triangle',delay,820+extra*32);
+      tone(930+extra*32,.052,.012,'sine',delay+.034,1180+extra*40);
+    }else{
+      tone(360+extra*18,.090,.029,'square',delay,510+extra*22);
+      noise(.050,.009,delay+.015,1300);
+    }
+  }
+
+  function comboSequence(size){
+    const v=groupVariant.pop;
+    const spacing=76;
+    for(let i=0;i<size;i++){
+      later(i*spacing,()=>popNote(i,v));
+    }
+    later(size*spacing+40,()=>comboCue(size,v));
+  }
+
+  // ------------------------------------------------------
+  // CHAIN
+  // ------------------------------------------------------
+  function chainCue(depth,v='A'){
+    if(depth<=1)return;
+    const root=500*Math.pow(2,(depth-2)*2/12);
+
+    if(v==='A'){
+      tone(root,.075,.030,'square',0,root*1.18);
+      tone(root*1.26,.090,.025,'square',.045,root*1.52);
+      tone(root*2.01,.045,.010,'square',.090,root*2.30);
+      noise(.055,.010,.020,2100);
+    }else if(v==='B'){
+      tone(root*.92,.060,.021,'triangle',0,root*1.08);
+      tone(root*1.18,.065,.019,'triangle',.035,root*1.42);
+      tone(root*1.48,.070,.016,'sine',.073,root*1.78);
+      tone(root*1.82,.055,.010,'sine',.112,root*2.05);
+    }else{
+      tone(root*.74,.055,.024,'square',0,root*1.32);
+      tone(root*1.54,.040,.012,'sawtooth',.048,root*.98);
+      noise(.060,.009,.018,2900);
+    }
+  }
+
+  function chainSequence(depth){
+    const v=groupVariant.chain;
+    let globalPopIndex=0;
+    let at=0;
+
+    // Each generation is deliberately 3–5 panels, like a real causal chain.
+    for(let gen=1;gen<=depth;gen++){
+      const count=3+(gen%3);
+      const localStart=chainContinuous ? globalPopIndex : 0;
+
+      for(let i=0;i<count;i++){
+        const noteIndex=localStart+i;
+        later(at+i*72,()=>popNote(noteIndex,groupVariant.pop));
+      }
+
+      globalPopIndex+=count;
+
+      if(gen>1){
+        later(at+count*72+35,()=>chainCue(gen,v));
+      }
+
+      // visible gameplay clear/fall gap
+      at+=count*72+330;
+    }
+  }
+
+  // ------------------------------------------------------
+  // EXPERIMENTAL FANFARE
+  // ------------------------------------------------------
+  function fanfare(depth){
+    const v=groupVariant.fanfare;
+    const tier=depth>=7?3:depth>=4?2:1;
+    const root=depth>=7?620:depth>=4?550:500;
+
+    if(v==='A'){
+      const notes=tier===1?[0,7]:tier===2?[0,4,7,12]:[0,4,7,12,16,19];
+      notes.forEach((st,i)=>{
+        tone(root*Math.pow(2,st/12),.070,.018,'square',i*.055);
+      });
+    }else if(v==='B'){
+      const notes=tier===1?[0,5,9]:tier===2?[0,4,7,11,14]:[0,4,7,11,14,19,23];
+      notes.forEach((st,i)=>{
+        tone(root*Math.pow(2,st/12),.085,.016,'triangle',i*.050,
+             root*Math.pow(2,(st+2)/12));
+      });
+    }else{
+      const n=tier===1?2:tier===2?4:6;
+      for(let i=0;i<n;i++){
+        const f=root*Math.pow(2,(i*3)/12);
+        tone(f,.055,.017,i%2?'square':'sine',i*.045,f*1.25);
+        if(i%2===0) noise(.025,.003,i*.045,3200);
+      }
+    }
+  }
+
+  // ------------------------------------------------------
+  // GARBAGE
+  // ------------------------------------------------------
+  function garbageLand(w,h,v='A'){
+    const mass=Math.max(1,w*h);
+    const root=Math.max(52,Math.min(108,112-mass*2.4));
+
+    if(v==='A'){
+      const gain=Math.max(.012,Math.min(.038,.010+mass*.0014));
+      tone(root,.075+Math.min(.055,mass*.003),gain,'square',0,Math.max(38,root*.64));
+      tone(root*.52,.095,Math.min(.024,gain*.72),'sine',.012,Math.max(28,root*.38));
+      noise(.040+Math.min(.035,mass*.002),Math.min(.015,.006+mass*.00035),0,950);
+    }else if(v==='B'){
+      const g=Math.min(.050,.020+mass*.0013);
+      tone(root*.82,.115,g,'sawtooth',0,root*.38);
+      tone(root*.38,.145,g*.62,'sine',.006,root*.24);
+      noise(.070,Math.min(.018,g*.38),0,720);
+    }else{
+      const g=Math.min(.055,.018+mass*.0015);
+      tone(root*.55,.160,g,'sine',0,Math.max(24,root*.28));
+      tone(root*.29,.190,g*.55,'sine',.005,Math.max(20,root*.20));
+      noise(.045,.006,0,600);
+    }
+  }
+
+  // ------------------------------------------------------
+  // CONVERSION
+  // ------------------------------------------------------
+  function convertCell(type,index,v='A'){
+    if(v==='A'){
+      tone(470+type*38+index*11,.035,.008,'square',0,620+index*16);
+    }else if(v==='B'){
+      tone(350+index*19,.045,.008,'square',0,480+index*24);
+      noise(.018,.002,0,2700);
+    }else{
+      tone(660+index*26,.040,.006,'sine',0,820+index*31);
+      tone(1320+index*18,.025,.003,'triangle',.008);
+    }
+  }
+
+  function rowRelease(count,v='A'){
+    if(v==='A'){
+      tone(230+count*18,.050,.012,'square',0,330+count*22);
+      noise(.030,.006,0,1800);
+    }else if(v==='B'){
+      tone(190+count*15,.060,.012,'sawtooth',0,280+count*19);
+      noise(.035,.005,0,1200);
+    }else{
+      tone(440+count*12,.055,.010,'triangle',0,610+count*18);
+    }
+  }
+
+  function conversionSequence(rows){
+    const v=groupVariant.convert;
+    let at=0;
+    for(let row=0;row<rows;row++){
+      for(let i=0;i<6;i++){
+        later(at+i*58,()=>convertCell(row%2,i,v));
+      }
+      later(at+6*58+35,()=>rowRelease(6,v));
+      at+=6*58+220;
+    }
+  }
+
+  // ------------------------------------------------------
+  // INCOMING
+  // ------------------------------------------------------
+  function arrival(v='A'){
+    if(v==='A'){
+      tone(118,.075,.018,'square',0,86);
+      noise(.050,.011,.008,900);
+    }else if(v==='B'){
+      tone(190,.065,.015,'sawtooth',0,115);
+      tone(380,.048,.008,'square',.035,220);
+      noise(.060,.009,.005,1400);
+    }else{
+      tone(105,.080,.010,'sine',0,82);
+      noise(.035,.005,.008,850);
+    }
+  }
+
+  function incomingSequence(){
+    const v=groupVariant.incoming;
+    arrival(v);
+    later(650,()=>garbageLand(6,2,groupVariant.garbage));
+  }
+
+  // ------------------------------------------------------
+  // GAME OVER
+  // ------------------------------------------------------
+  function gameOver(v='A'){
+    if(v==='A'){
+      tone(270,.16,.028,'sawtooth',0,185);
+      tone(190,.22,.028,'square',.11,92);
+      noise(.10,.010,.06,1200);
+    }else if(v==='B'){
+      tone(330,.11,.024,'triangle',0,245);
+      tone(245,.14,.024,'triangle',.09,165);
+      tone(165,.22,.027,'sawtooth',.19,72);
+      noise(.11,.008,.12,900);
+    }else{
+      tone(285,.20,.018,'sine',0,205);
+      tone(205,.28,.016,'sine',.12,92);
+      noise(.22,.006,.07,1600);
+    }
+  }
+
+  // ------------------------------------------------------
+  // UI
+  // ------------------------------------------------------
+  document.querySelectorAll('.card').forEach(card=>{
+    const group=card.dataset.group;
+    card.querySelectorAll('.variant').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        card.querySelectorAll('.variant').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        groupVariant[group]=btn.dataset.v;
+        updateSummary();
+        ensureAudio();
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-test]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      ensureAudio();
+      const t=btn.dataset.test;
+      if(t==='movement') movementSequence();
+      if(t==='combo4') comboSequence(4);
+      if(t==='combo6') comboSequence(6);
+      if(t==='combo10') comboSequence(10);
+      if(t==='chain3') chainSequence(3);
+      if(t==='chain5') chainSequence(5);
+      if(t==='chain9') chainSequence(9);
+      if(t==='fan2') fanfare(2);
+      if(t==='fan4') fanfare(4);
+      if(t==='fan7') fanfare(7);
+      if(t==='garbage3') garbageLand(3,1,groupVariant.garbage);
+      if(t==='garbage6') garbageLand(6,1,groupVariant.garbage);
+      if(t==='garbage24') garbageLand(6,4,groupVariant.garbage);
+      if(t==='convert61') conversionSequence(1);
+      if(t==='convert63') conversionSequence(3);
+      if(t==='incoming') incomingSequence();
+      if(t==='gameover') gameOver(groupVariant.gameover);
+    });
+  });
+
+  document.getElementById('resetMode').addEventListener('click',()=>{
+    chainContinuous=false;
+    document.getElementById('resetMode').classList.add('active');
+    document.getElementById('continuousMode').classList.remove('active');
+    updateSummary();
+  });
+
+  document.getElementById('continuousMode').addEventListener('click',()=>{
+    chainContinuous=true;
+    document.getElementById('continuousMode').classList.add('active');
+    document.getElementById('resetMode').classList.remove('active');
+    updateSummary();
+  });
+
+  function updateControls(){
+    document.getElementById('waveVal').textContent=waveNames[Number(wave.value)];
+    document.getElementById('durationVal').textContent=Number(duration.value).toFixed(2)+'×';
+    document.getElementById('pitchVal').textContent=Number(pitch.value).toFixed(2)+'×';
+    document.getElementById('volumeVal').textContent=Number(volume.value).toFixed(2)+'×';
+    updateSummary();
+  }
+
+  [wave,duration,pitch,volume].forEach(el=>el.addEventListener('input',updateControls));
+
+  function settingsText(){
+    return [
+      `GLOBAL`,
+      `Wave: ${waveNames[Number(wave.value)]}`,
+      `Duration: ${Number(duration.value).toFixed(2)}x`,
+      `Pitch: ${Number(pitch.value).toFixed(2)}x`,
+      `Volume: ${Number(volume.value).toFixed(2)}x`,
+      ``,
+      `VARIANTS`,
+      `Movement: ${groupVariant.movement}`,
+      `Pop/Combo: ${groupVariant.pop}`,
+      `Chain cue: ${groupVariant.chain}`,
+      `Chain pop continuity: ${chainContinuous?'CONTINUOUS':'RESET EACH GENERATION'}`,
+      `Chain-end fanfare: ${groupVariant.fanfare}`,
+      `Garbage impact: ${groupVariant.garbage}`,
+      `Garbage conversion: ${groupVariant.convert}`,
+      `Incoming: ${groupVariant.incoming}`,
+      `Game Over: ${groupVariant.gameover}`
+    ].join('\n');
+  }
+
+  function updateSummary(){
+    document.getElementById('summaryText').textContent=settingsText();
+  }
+
+  document.getElementById('copy').addEventListener('click',async()=>{
+    const txt=settingsText();
+    try{
+      await navigator.clipboard.writeText(txt);
+      document.getElementById('copy').textContent='COPIED ✓';
+      setTimeout(()=>document.getElementById('copy').textContent='COPY CURRENT SETTINGS',1200);
+    }catch(e){
+      prompt('Copia queste impostazioni:',txt);
+    }
+  });
+
+  updateControls();
+})();
+</script>
+</body>
+</html>
