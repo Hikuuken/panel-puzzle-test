@@ -1030,7 +1030,7 @@ body.battle-view .battle-debug.qa-open{display:block}
   </section>
 
   <div class="version">
-    F2 apre il Debug Lab. V0.9.1: Core / Mobile / Audio Consolidation.
+    F2 apre il Debug Lab. V0.9.1: Core / Mobile / Audio Consolidation · Touch Hotfix.
   </div>
 </main>
 
@@ -1489,6 +1489,7 @@ let garbageSpawnSequence=0;
 let touchDrag=null;
 let lastInputMode='keyboard';
 const TOUCH_SWAP_THRESHOLD=.38;
+const TOUCH_REVERSE_THRESHOLD=.72;
 
 
 
@@ -1946,6 +1947,11 @@ class BattlePuzzleEngine{
     if(touchCommitted && this.touchDrag===drag){
       drag.originCol+=committedDir;
       drag.startX+=committedDir*TILE;
+
+      // Anti ping-pong hysteresis:
+      // remember the direction of the last committed swap.
+      drag.lastCommittedDir=committedDir;
+
       drag.dir=0;
       drag.pairCol=null;
       drag.progress=0;
@@ -3859,6 +3865,22 @@ function advanceBattleTouchDrag(){
   }
 
   const dir=dx>0?1:-1;
+
+  // Anti ping-pong hysteresis:
+  // after a committed swap, reversing direction requires a much more
+  // deliberate movement, so a finger resting on the cell boundary
+  // cannot trigger an infinite A↔B swap loop.
+  if(
+    d.lastCommittedDir &&
+    dir===-d.lastCommittedDir &&
+    Math.abs(dx)<TOUCH_REVERSE_THRESHOLD*TILE
+  ){
+    d.dir=0;
+    d.pairCol=null;
+    d.progress=0;
+    return;
+  }
+
   const pair=dir>0?d.originCol:d.originCol-1;
 
   if(pair<0 || pair>=COLS-1 || !e.canSwapPair(d.r,pair)){
@@ -3899,6 +3921,7 @@ function battleTouchStart(ev){
     progress:0,
     waitingSwap:false,
     committedDir:0,
+    lastCommittedDir:0,
     releaseAfterSwap:false
   };
   s.player.touchDrag=s.touch;
@@ -5258,6 +5281,11 @@ function commitSwap(){
   if(touchCommitted && touchDrag===drag){
     drag.originCol+=committedDir;
     drag.startX+=committedDir*TILE;
+
+    // Anti ping-pong hysteresis:
+    // remember the direction of the last committed swap.
+    drag.lastCommittedDir=committedDir;
+
     drag.dir=0;
     drag.pairCol=null;
     drag.progress=0;
@@ -7835,6 +7863,19 @@ function advanceContinuousTouchDrag(){
   }
 
   const dir=dx>0 ? 1 : -1;
+// Anti ping-pong hysteresis.
+// Dopo uno swap, la direzione opposta richiede un movimento
+// più deciso prima di poter essere riattivata.
+if(
+  d.lastCommittedDir &&
+  dir===-d.lastCommittedDir &&
+  Math.abs(dx)<TOUCH_REVERSE_THRESHOLD*TILE
+){
+  d.dir=0;
+  d.pairCol=null;
+  d.progress=0;
+  return;
+}
   const pairCol=dir>0 ? d.originCol : d.originCol-1;
 
   if(
@@ -7907,6 +7948,7 @@ function beginTouchDrag(e){
     progress:0,
     waitingSwap:false,
     committedDir:0,
+    lastCommittedDir:0,
     releaseAfterSwap:false
   };
 
