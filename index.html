@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Panel Puzzle V0.9.1</title>
+<title>Panel Puzzle V0.9.2</title>
 <style>
 :root{
   --bg:#0c0c0d;
@@ -729,7 +729,7 @@ body.battle-view .battle-debug.qa-open{display:block}
 <main class="app">
   <header class="topbar">
     <div>
-      <h1>PANEL PUZZLE V0.9.1</h1>
+      <h1>PANEL PUZZLE V0.9.2</h1>
       <div class="subtitle">BATTLE SANDBOX · AI + Versus + Garbage Exchange</div>
     </div>
 
@@ -992,7 +992,7 @@ body.battle-view .battle-debug.qa-open{display:block}
   </section>
 
   <section class="garbage-lab" id="garbageLab">
-    <h3>GARBAGE LAB // V0.9.1</h3>
+    <h3>GARBAGE LAB // V0.9.2</h3>
     <p>Simula attacchi VS senza nemico. I garbage entrano dalla coda, cadono come oggetti rigidi e reagiscono ai match adiacenti.</p>
 
     <div class="lab-row" aria-label="Garbage type">
@@ -1030,7 +1030,7 @@ body.battle-view .battle-debug.qa-open{display:block}
   </section>
 
   <div class="version">
-    F2 apre il Debug Lab. V0.9.1: Core / Mobile / Audio Consolidation · Touch Hotfix.
+    F2 apre il Debug Lab. V0.9.2: PPC Mechanics Pass · concurrent per-panel states · timing provisional.
   </div>
 </main>
 
@@ -1481,6 +1481,7 @@ let garbageFallAnims;
 let garbageQueue;
 let garbageQueueCooldownMs;
 let garbageConversionJobs;
+let garbageConversionJobCounter=1;
 let garbageLabType='A';
 let garbageSpawnSequence=0;
 
@@ -1490,6 +1491,19 @@ let touchDrag=null;
 let lastInputMode='keyboard';
 const TOUCH_SWAP_THRESHOLD=.38;
 const TOUCH_REVERSE_THRESHOLD=.72;
+
+// ============================================================
+// PPC MECHANICS PASS // STRUCTURE CONFIRMED, TIMING STILL PROVISIONAL
+// ============================================================
+// The PPC research confirms that gameplay is concurrent/per-panel:
+// CLEARING, HOVERING, FALLING and SWAPPING can coexist in different cells.
+// Exact swap/hover/fall/blink/pop/chain-stop timings remain configurable.
+//
+// The only frame-specific value used below is the documented chain-tech
+// distinction around the final two frames before landing. It is used as a
+// conservative falling-panel interception window, NOT as PPC swap duration.
+const GBC_FRAME_MS=1000/59.7275;
+const FALLING_SWAP_WINDOW_MS=GBC_FRAME_MS*2;
 
 
 
@@ -1831,8 +1845,58 @@ class BattlePuzzleEngine{
   typeCount(){ return activeTypeCount(this.level); }
   randType(){ return Math.floor(Math.random()*this.typeCount()); }
 
+  get clearWave(){ return this.clearWaves?.[0] || null; }
+  set clearWave(value){ this.clearWaves=value ? [value] : []; }
+  hasClearWaves(){ return (this.clearWaves?.length || 0)>0; }
+
+  clearingCell(r,c){
+    return (this.clearWaves || []).some(
+      wave=>wave.cells.some(cell=>
+        !wave.removed.has(cell.panel.id) &&
+        cell.r===r && cell.c===c
+      )
+    );
+  }
+
+  panelClearing(panel){
+    if(!panel) return false;
+    return (this.clearWaves || []).some(
+      wave=>wave.cells.some(cell=>
+        !wave.removed.has(cell.panel.id) &&
+        cell.panel===panel
+      )
+    );
+  }
+
+  swapLocksCell(r,c){
+    return !!this.swap && this.swap.r===r && (this.swap.c===c || this.swap.c+1===c);
+  }
+
+  fallTweenAt(r,c){
+    return this.fallTweens.find(f=>f.toR===r && f.c===c) || null;
+  }
+
+  fallingSwapEligible(record){
+    if(!record) return false;
+    return Math.max(0,record.duration-record.elapsed)<=FALLING_SWAP_WINDOW_MS;
+  }
+
+  interceptFallingCellForSwap(r,c){
+    const record=this.fallTweenAt(r,c);
+    if(!record) return true;
+    if(!this.fallingSwapEligible(record)) return false;
+    this.fallTweens=this.fallTweens.filter(f=>f!==record);
+    record.panel.hoverMs=null;
+    record.panel.settleMs=0;
+    return true;
+  }
+
   panel(type){
-    return {id:this.panelId++,type,chainTag:0,hoverMs:null,settleMs:0,squashMs:0};
+    return {
+      id:this.panelId++,type,chainTag:0,
+      hoverMs:null,settleMs:0,squashMs:0,
+      conversionLocked:false,conversionJobId:null
+    };
   }
 
   emptyGrid(){
@@ -1848,7 +1912,7 @@ class BattlePuzzleEngine{
     this.forceRiseHoldMs=0;
     this.swap=null;
     this.touchDrag=null;
-    this.clearWave=null;
+    this.clearWaves=[];
     this.fallTweens=[];
     this.gravityMs=0;
     this.matchQuietMs=0;
@@ -1861,6 +1925,8 @@ class BattlePuzzleEngine{
     this.garbageFallTweens=[];
     this.garbageGravityMs=0;
     this.conversion=null;
+    this.conversionQueue=[];
+    this.conversionJobId=0;
     this.topOutMs=0;
     this.dead=false;
     this.paused=false;
@@ -1906,8 +1972,16 @@ class BattlePuzzleEngine{
   canSwapCell(r,c){
     if(r<0 || r>=ROWS || c<0 || c>=COLS) return false;
     if(this.isGarbageAt(r,c)) return false;
-    if(this.clearWave?.cells.some(x=>x.r===r&&x.c===c)) return false;
-    if(this.fallTweens.some(f=>f.toR===r&&f.c===c)) return false;
+    if(this.clearingCell(r,c)) return false;
+    if(this.swapLocksCell(r,c)) return false;
+
+    const panel=this.grid[r][c];
+    if(panel?.hoverMs!==null) return false;
+    if(panel?.conversionLocked) return false;
+
+    const fall=this.fallTweenAt(r,c);
+    if(fall && !this.fallingSwapEligible(fall)) return false;
+
     return true;
   }
 
@@ -1921,6 +1995,11 @@ class BattlePuzzleEngine{
 
   startSwap(r,c,startProgress=0){
     if(!this.canSwapPair(r,c)) return false;
+    if(
+      !this.interceptFallingCellForSwap(r,c) ||
+      !this.interceptFallingCellForSwap(r,c+1)
+    ) return false;
+
     this.cursor={row:r,col:c};
     this.swap={
       r,c,left:this.grid[r][c],right:this.grid[r][c+1],
@@ -1982,15 +2061,9 @@ class BattlePuzzleEngine{
   }
 
   fallingSegments(){
-    // V0.9: only columns participating in the clear wave are held.
-    const heldColumns=new Set(
-      this.clearWave?.cells.map(cell=>cell.c) || []
-    );
-
     const out=[];
 
     for(let c=0;c<COLS;c++){
-      if(heldColumns.has(c)) continue;
       let r=ROWS-2;
 
       while(r>=0){
@@ -1999,8 +2072,9 @@ class BattlePuzzleEngine{
         if(
           !p ||
           this.solid(r+1,c) ||
+          this.swapLocksCell(r,c) ||
           this.fallTweens.some(f=>f.panel===p) ||
-          this.clearWave?.cells.some(x=>x.panel===p)
+          this.panelClearing(p)
         ){
           r--;
           continue;
@@ -2011,8 +2085,9 @@ class BattlePuzzleEngine{
           const above=this.grid[top-1][c];
           if(
             !above ||
+            this.swapLocksCell(top-1,c) ||
             this.fallTweens.some(f=>f.panel===above) ||
-            this.clearWave?.cells.some(x=>x.panel===above) ||
+            this.panelClearing(above) ||
             this.isGarbageAt(top-1,c)
           ) break;
           top--;
@@ -2032,7 +2107,6 @@ class BattlePuzzleEngine{
   }
 
   doGravityStep(){
-    if(this.fallTweens.length) return false;
 
     const segments=this.fallingSegments().filter(seg=>{
       const bottom=seg.members[seg.members.length-1]?.panel;
@@ -2136,8 +2210,10 @@ class BattlePuzzleEngine{
   isReadyMatchCell(r,c){
     const p=this.grid[r]?.[c];
     if(!p || p.settleMs>0 || p.hoverMs!==null) return false;
+    if(p.conversionLocked) return false;
+    if(this.swapLocksCell(r,c)) return false;
     if(this.fallTweens.some(f=>f.panel===p)) return false;
-    if(this.clearWave?.cells.some(x=>x.panel===p)) return false;
+    if(this.panelClearing(p)) return false;
     return true;
   }
 
@@ -2187,6 +2263,50 @@ class BattlePuzzleEngine{
       const [r,c]=key.split(',').map(Number);
       return {r,c,panel:grid[r][c]};
     }).filter(x=>x.panel);
+  }
+
+  readyMatchComponents(){
+    const cells=this.findMatchesOnGrid(this.grid,true);
+    const byKey=new Map(cells.map(cell=>[`${cell.r}:${cell.c}`,cell]));
+    const visited=new Set();
+    const components=[];
+    const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+
+    for(const cell of cells){
+      const key=`${cell.r}:${cell.c}`;
+      if(visited.has(key)) continue;
+
+      const stack=[cell];
+      const comp=[];
+      visited.add(key);
+
+      while(stack.length){
+        const cur=stack.pop();
+        comp.push(cur);
+
+        for(const [dr,dc] of dirs){
+          const nr=cur.r+dr,nc=cur.c+dc;
+          const nk=`${nr}:${nc}`;
+          const next=byKey.get(nk);
+
+          if(
+            !next ||
+            visited.has(nk) ||
+            next.panel.type!==cur.panel.type
+          ) continue;
+
+          visited.add(nk);
+          stack.push(next);
+        }
+      }
+
+      components.push({
+        cells:comp,
+        inheritedTag:Math.max(0,...comp.map(x=>x.panel.chainTag||0))
+      });
+    }
+
+    return components;
   }
 
   garbageTargetsFor(cells){
@@ -2301,16 +2421,32 @@ class BattlePuzzleEngine{
     this.eventTags=this.eventTags.filter(tag=>tag.life>0);
   }
 
-  beginMatch(cells){
-    if(!cells.length || this.clearWave) return;
-    const inherited=Math.max(0,...cells.map(x=>x.panel.chainTag||0));
+  beginMatch(cells,inheritedOverride=null){
+    const unique=[];
+    const seen=new Set();
+
+    for(const cell of cells){
+      const key=`${cell.r}:${cell.c}`;
+      if(seen.has(key) || this.clearingCell(cell.r,cell.c)) continue;
+      seen.add(key);
+      unique.push(cell);
+    }
+
+    if(!unique.length) return false;
+
+    const inherited=inheritedOverride===null
+      ? Math.max(0,...unique.map(x=>x.panel.chainTag||0))
+      : inheritedOverride;
+
     const depth=inherited>0 ? inherited+1 : 1;
-    const combo=cells.length;
+    const combo=unique.length;
     const cfg=this.cfg();
-    const ordered=[...cells].sort((a,b)=>a.r===b.r?a.c-b.c:a.r-b.r);
+    const ordered=[...unique].sort((a,b)=>a.r===b.r?a.c-b.c:a.r-b.r);
+
     for(const cell of ordered){
       cell.face=randomPanelFace();
     }
+
     const total=cfg.blinkCount*cfg.blinkIntervalMs+cfg.prePopHoldMs+
       Math.max(0,ordered.length-1)*cfg.clearStepDelay+cfg.clearPopMs;
 
@@ -2323,13 +2459,15 @@ class BattlePuzzleEngine{
       total+780
     );
 
-    this.clearWave={
+    this.clearWaves.push({
+      id:(this.clearWaveId=(this.clearWaveId||0)+1),
       cells:ordered,depth,combo,elapsed:0,total,
       garbageTargets:this.garbageTargetsFor(ordered),
       removed:new Set(),
       attackSpecs,
       attackOrigin
-    };
+    });
+
     this.stats.maxChain=Math.max(this.stats.maxChain,depth);
     this.stats.maxCombo=Math.max(this.stats.maxCombo,combo);
     this.audioChainActive=true;
@@ -2341,6 +2479,8 @@ class BattlePuzzleEngine{
     if(attackSpecs.length){
       this.stats.attacks+=attackSpecs.length;
     }
+
+    return true;
   }
 
   markAboveForChain(r,c,depth){
@@ -2352,46 +2492,57 @@ class BattlePuzzleEngine{
   }
 
   updateClear(dt){
-    if(!this.clearWave) return;
-    const wave=this.clearWave,cfg=this.cfg();
-    wave.elapsed+=dt;
-    const blinkTotal=cfg.blinkCount*cfg.blinkIntervalMs;
-    const start=blinkTotal+cfg.prePopHoldMs;
+    if(!this.clearWaves.length) return;
 
-    wave.cells.forEach((cell,index)=>{
-      if(wave.removed.has(cell.panel.id)) return;
-      const popAt=start+index*cfg.clearStepDelay+cfg.clearPopMs;
-      if(wave.elapsed>=popAt){
-        if(this.grid[cell.r][cell.c]===cell.panel){
-          this.markAboveForChain(cell.r,cell.c,wave.depth);
-          this.spawnPopFoliage(cell.r,cell.c,cell.panel.type);
-          this.grid[cell.r][cell.c]=null;
-          this.stats.cleared++;
-          this.onEvent?.({type:'pop',index:this.audioPopIndex++,depth:wave.depth,engine:this});
-        }
-        wave.removed.add(cell.panel.id);
-      }
-    });
+    const finished=[];
 
-    if(wave.elapsed>=wave.total){
-      if(wave.garbageTargets.length) this.startGarbageConversion(wave.garbageTargets,wave.depth);
+    for(const wave of this.clearWaves){
+      const cfg=this.cfg();
+      wave.elapsed+=dt;
+      const blinkTotal=cfg.blinkCount*cfg.blinkIntervalMs;
+      const start=blinkTotal+cfg.prePopHoldMs;
 
-      // Only after the complete action/clear animation do we telegraph the attack.
-      if(wave.attackSpecs?.length){
-        this.onAttack?.(
-          wave.attackSpecs,
-          {
-            combo:wave.combo,
-            depth:wave.depth,
-            engine:this,
-            origin:wave.attackOrigin
+      wave.cells.forEach((cell,index)=>{
+        if(wave.removed.has(cell.panel.id)) return;
+        const popAt=start+index*cfg.clearStepDelay+cfg.clearPopMs;
+
+        if(wave.elapsed>=popAt){
+          if(this.grid[cell.r][cell.c]===cell.panel){
+            this.markAboveForChain(cell.r,cell.c,wave.depth);
+            this.spawnPopFoliage(cell.r,cell.c,cell.panel.type);
+            this.grid[cell.r][cell.c]=null;
+            this.stats.cleared++;
+            this.onEvent?.({type:'pop',index:this.audioPopIndex++,depth:wave.depth,engine:this});
           }
-        );
-      }
+          wave.removed.add(cell.panel.id);
+        }
+      });
 
-      this.clearWave=null;
-      this.matchQuietMs=0;
-      this.gravityMs=this.cfg().fallStepMs;
+      if(wave.elapsed>=wave.total){
+        if(wave.garbageTargets.length){
+          this.startGarbageConversion(wave.garbageTargets,wave.depth);
+        }
+
+        if(wave.attackSpecs?.length){
+          this.onAttack?.(
+            wave.attackSpecs,
+            {
+              combo:wave.combo,
+              depth:wave.depth,
+              engine:this,
+              origin:wave.attackOrigin
+            }
+          );
+        }
+
+        finished.push(wave.id);
+        this.matchQuietMs=0;
+        this.gravityMs=this.cfg().fallStepMs;
+      }
+    }
+
+    if(finished.length){
+      this.clearWaves=this.clearWaves.filter(w=>!finished.includes(w.id));
     }
   }
 
@@ -2445,7 +2596,7 @@ class BattlePuzzleEngine{
   anyGarbageCanFall(){ return this.garbage.some(g=>this.garbageCanFall(g)); }
 
   spawnQueuedGarbage(){
-    if(!this.garbageQueue.length || this.clearWave || this.conversion) return;
+    if(!this.garbageQueue.length || this.hasClearWaves() || this.conversion) return;
     if(this.garbageFallTweens.length || this.anyGarbageCanFall()) return;
     const spec=this.garbageQueue.shift();
     const w=clamp(spec.w,1,COLS),h=Math.max(1,spec.h);
@@ -2491,7 +2642,7 @@ class BattlePuzzleEngine{
       }
     }
 
-    if(this.garbageFallTweens.length || this.clearWave || this.conversion) return;
+    if(this.garbageFallTweens.length || this.hasClearWaves() || this.conversion) return;
 
     const ordered=[...this.garbage].sort((a,b)=>(b.row+b.h)-(a.row+a.h));
     for(const g of ordered){
@@ -2512,7 +2663,12 @@ class BattlePuzzleEngine{
 
   startGarbageConversion(ids,depth){
     const valid=ids.filter(id=>this.garbage.some(g=>g.id===id));
-    if(!valid.length || this.conversion) return;
+    if(!valid.length) return;
+
+    if(this.conversion){
+      this.conversionQueue.push({ids:[...valid],depth});
+      return;
+    }
     const rows=[];
     const rowMap=new Map();
     for(const id of valid){
@@ -2520,6 +2676,7 @@ class BattlePuzzleEngine{
       if(!g) continue;
       for(let local=g.h-1;local>=0;local--){
         const r=g.row+local;
+        if(r<FIRST_VISIBLE_ROW || r>=ROWS) continue;
         if(!rowMap.has(r)) rowMap.set(r,[]);
         const types=this.conversionPattern(g,local);
         for(let i=0;i<g.w;i++) rowMap.get(r).push({r,c:g.x+i,type:types[i],blockId:g.id});
@@ -2529,14 +2686,19 @@ class BattlePuzzleEngine{
       rows.push({r:Number(r),tokens:tokens.sort((a,b)=>a.c-b.c||a.blockId-b.blockId)});
     }
     rows.sort((a,b)=>b.r-a.r);
-    this.conversion={ids:valid,depth,rows,rowIndex:0,revealed:0,doneTokens:[],elapsed:0,phase:'lead',lead:250,cell:88,rowGap:135,finalHold:170,soundIndex:0};
+    this.conversion={
+      id:++this.conversionJobId,
+      ids:valid,depth,rows,rowIndex:0,revealed:0,doneTokens:[],
+      elapsed:0,phase:rows.length?'lead':'final',
+      lead:250,cell:88,rowGap:135,finalHold:170,soundIndex:0
+    };
     this.onEvent?.({type:'conversionTrigger',engine:this});
   }
 
   conversionPreview(){
     if(!this.conversion) return [];
     const cv=this.conversion;
-    const out=[...cv.doneTokens];
+    const out=[];
     if(cv.phase==='reveal'){
       const row=cv.rows[cv.rowIndex];
       if(row) out.push(...row.tokens.slice(0,cv.revealed));
@@ -2544,46 +2706,120 @@ class BattlePuzzleEngine{
     return out;
   }
 
-  updateConversion(dt){
-    const cv=this.conversion;if(!cv) return;
-    cv.elapsed+=dt;
-    if(cv.phase==='lead'){
-      if(cv.elapsed>=cv.lead){cv.elapsed=0;cv.phase='reveal';}
-      return;
+  commitConversionRow(cv,row){
+    if(!row) return;
+
+    const touched=[...new Set(row.tokens.map(t=>t.blockId))];
+
+    for(const id of touched){
+      const g=this.garbage.find(x=>x.id===id);
+      if(!g) continue;
+
+      const bottom=g.row+g.h-1;
+      if(bottom===row.r){
+        g.h=Math.max(0,g.h-1);
+      }
     }
-    if(cv.phase==='gap'){
-      if(cv.elapsed>=cv.rowGap){cv.elapsed=0;cv.phase='reveal';cv.revealed=0;}
-      return;
+
+    this.garbage=this.garbage.filter(g=>g.h>0);
+
+    for(const token of row.tokens){
+      if(
+        token.r>=FIRST_VISIBLE_ROW && token.r<ROWS &&
+        token.c>=0 && token.c<COLS
+      ){
+        const p=this.panel(token.type);
+        p.chainTag=cv.depth;
+        p.settleMs=0;
+        p.hoverMs=null;
+        p.conversionLocked=true;
+        p.conversionJobId=cv.id;
+        this.grid[token.r][token.c]=p;
+      }
     }
-    if(cv.phase==='final'){
-      if(cv.elapsed>=cv.finalHold){
-        const all=cv.rows.flatMap(row=>row.tokens);
-        this.garbage=this.garbage.filter(g=>!cv.ids.includes(g.id));
-        for(const t of all){
-          if(t.r>=0&&t.r<ROWS&&t.c>=0&&t.c<COLS){
-            const p=this.panel(t.type);p.chainTag=cv.depth;p.settleMs=0;p.hoverMs=null;
-            this.grid[t.r][t.c]=p;
-          }
+
+    this.gravityMs=this.cfg().fallStepMs;
+    this.matchQuietMs=0;
+  }
+
+  finishConversion(cv){
+    for(const row of this.grid){
+      for(const p of row){
+        if(p?.conversionJobId===cv.id){
+          p.conversionLocked=false;
+          p.conversionJobId=null;
         }
-        const releasedRows=cv.rows.length;
-        this.conversion=null;
-        this.gravityMs=this.cfg().fallStepMs;
-        this.matchQuietMs=0;
-        this.onEvent?.({type:'conversionRelease',count:releasedRows,engine:this});
+      }
+    }
+
+    const releasedRows=cv.rows.length;
+    this.conversion=null;
+    this.gravityMs=this.cfg().fallStepMs;
+    this.matchQuietMs=0;
+    this.onEvent?.({type:'conversionRelease',count:releasedRows,engine:this});
+
+    if(this.conversionQueue.length){
+      const next=this.conversionQueue.shift();
+      this.startGarbageConversion(next.ids,next.depth);
+    }
+  }
+
+  updateConversion(dt){
+    const cv=this.conversion;
+    if(!cv) return;
+
+    cv.elapsed+=dt;
+
+    if(cv.phase==='lead'){
+      if(cv.elapsed>=cv.lead){
+        cv.elapsed=0;
+        cv.phase='reveal';
       }
       return;
     }
+
+    if(cv.phase==='gap'){
+      if(cv.elapsed>=cv.rowGap){
+        cv.elapsed=0;
+        cv.phase='reveal';
+        cv.revealed=0;
+      }
+      return;
+    }
+
+    if(cv.phase==='final'){
+      if(cv.elapsed>=cv.finalHold){
+        this.finishConversion(cv);
+      }
+      return;
+    }
+
     if(cv.phase!=='reveal') return;
+
     const row=cv.rows[cv.rowIndex];
-    if(!row){cv.phase='final';cv.elapsed=0;return;}
+    if(!row){
+      cv.phase='final';
+      cv.elapsed=0;
+      return;
+    }
+
     while(cv.revealed<row.tokens.length && cv.elapsed>=cv.cell){
       cv.elapsed-=cv.cell;
       const token=row.tokens[cv.revealed];
       cv.revealed++;
-      this.onEvent?.({type:'conversionCell',index:cv.soundIndex++,panelType:token?.type??0,engine:this});
+      this.onEvent?.({
+        type:'conversionCell',
+        index:cv.soundIndex++,
+        panelType:token?.type??0,
+        engine:this
+      });
     }
+
     if(cv.revealed>=row.tokens.length && cv.elapsed>=50){
-      cv.doneTokens.push(...row.tokens);cv.rowIndex++;cv.revealed=0;cv.elapsed=0;
+      this.commitConversionRow(cv,row);
+      cv.rowIndex++;
+      cv.revealed=0;
+      cv.elapsed=0;
       cv.phase=cv.rowIndex>=cv.rows.length?'final':'gap';
     }
   }
@@ -2599,9 +2835,17 @@ class BattlePuzzleEngine{
 
   updateRise(dt){
     // Incoming garbage is independent from the local rising field.
-    // Local clears/falls/conversion still pause rise; enemy attack generation does not.
+    // Local rise-stop timings are still provisional pending PPC extraction.
     if(!this.forceRise) this.forceRiseHoldMs=0;
-    if(this.clearWave || this.conversion || this.swap || this.fallTweens.length || this.anyPanelCanFall()) return;
+
+    // PPC confirmed: once the stack is at the top, forced rise cannot keep
+    // pushing it further.
+    if(this.bufferOccupied()){
+      this.forceRise=false;
+      this.forceRiseHoldMs=0;
+      return;
+    }
+    if(this.hasClearWaves() || this.conversion || this.swap || this.fallTweens.length || this.anyPanelCanFall()) return;
 
     if(this.forceRise){
       this.forceRiseHoldMs=Math.min(
@@ -2645,7 +2889,7 @@ class BattlePuzzleEngine{
   }
 
   checkTopOut(dt){
-    const busy=this.clearWave||this.conversion||this.swap||this.fallTweens.length||this.garbageFallTweens.length||this.anyPanelCanFall()||this.anyGarbageCanFall();
+    const busy=this.hasClearWaves()||this.conversion||this.swap||this.fallTweens.length||this.garbageFallTweens.length||this.anyPanelCanFall()||this.anyGarbageCanFall();
     if(this.bufferOccupied() && !busy){
       this.topOutMs+=dt;
       if(this.topOutMs>=this.cfg().topOutGraceMs){
@@ -2655,42 +2899,99 @@ class BattlePuzzleEngine{
   }
 
   stableForMatch(){
-    return !this.clearWave && !this.conversion && !this.swap && !this.fallTweens.length && !this.garbageFallTweens.length && !this.anyPanelCanFall() && !this.anyGarbageCanFall();
+    return !this.hasClearWaves() && !this.conversion && !this.swap && !this.fallTweens.length && !this.garbageFallTweens.length && !this.anyPanelCanFall() && !this.anyGarbageCanFall();
   }
 
   update(dt){
     if(this.dead||this.paused) return;
+
     this.updateFx(dt);
     if(this.lastEvent.ms>0) this.lastEvent.ms=Math.max(0,this.lastEvent.ms-dt);
 
-    if(this.swap){this.swap.elapsed+=dt;if(this.swap.elapsed>=this.swap.duration)this.commitSwap();}
+    if(this.swap){
+      this.swap.elapsed+=dt;
+      if(this.swap.elapsed>=this.swap.duration) this.commitSwap();
+    }
+
     this.updateClear(dt);
     this.updateConversion(dt);
     this.spawnQueuedGarbage();
     this.updateGarbageGravity(dt);
     this.updatePanelTimers(dt);
 
-    if(!this.swap && !this.fallTweens.length){
-      this.gravityMs+=dt;
-      const cadence=Math.max(12,this.cfg().fallStepMs*.22);
-      if(this.gravityMs>=cadence){this.gravityMs=0;this.doGravityStep();}
+    // PPC: gravity is local/per-entity. A swap or fall tween elsewhere does
+    // not freeze unsupported panels in unrelated cells.
+    this.gravityMs+=dt;
+    const cadence=Math.max(12,this.cfg().fallStepMs*.22);
+    if(this.gravityMs>=cadence){
+      this.gravityMs=0;
+      this.doGravityStep();
     }
 
-    if(this.stableForMatch()){
-      const cells=this.findMatchesOnGrid(this.grid,true);
-      if(cells.length){
-        this.beginMatch(cells);
-        this.matchQuietMs=0;
-      }else{
-        this.matchQuietMs+=dt;
-        if(this.matchQuietMs>320){
-          if(this.audioChainActive){
-            this.onEvent?.({type:'chainEnd',maxChain:this.audioMaxChain,engine:this});
-            this.audioChainActive=false;
-            this.audioMaxChain=1;
-            this.audioPopIndex=0;
+    // PPC: match detection is frame-local, not "wait until board stable".
+    const components=this.readyMatchComponents();
+
+    const normal=components.filter(c=>c.inheritedTag===0);
+    if(normal.length){
+      this.beginMatch(
+        normal.flatMap(c=>c.cells),
+        0
+      );
+    }
+
+    const tags=[...new Set(
+      components
+        .filter(c=>c.inheritedTag>0)
+        .map(c=>c.inheritedTag)
+    )].sort((a,b)=>a-b);
+
+    for(const tag of tags){
+      const batch=components
+        .filter(c=>c.inheritedTag===tag)
+        .flatMap(c=>c.cells);
+
+      if(batch.length) this.beginMatch(batch,tag);
+    }
+
+    if(components.length){
+      this.matchQuietMs=0;
+    }else{
+      this.matchQuietMs+=dt;
+
+      // Keep the chain audio/event alive while causal tagged motion/clears or
+      // a conversion are still active. Unrelated normal board activity is not
+      // required to stop the timer.
+      const taggedMotion=this.grid.some((row,r)=>row.some((p,c)=>
+        p && p.chainTag>0 && (
+          this.fallTweens.some(f=>f.panel===p) ||
+          p.hoverMs!==null ||
+          p.conversionLocked ||
+          (r<ROWS-1 && !this.solid(r+1,c))
+        )
+      ));
+      const taggedClear=this.clearWaves.some(w=>w.depth>1);
+
+      if(
+        this.matchQuietMs>320 &&
+        !taggedMotion &&
+        !taggedClear &&
+        !this.conversion
+      ){
+        if(this.audioChainActive){
+          this.onEvent?.({
+            type:'chainEnd',
+            maxChain:this.audioMaxChain,
+            engine:this
+          });
+          this.audioChainActive=false;
+          this.audioMaxChain=1;
+          this.audioPopIndex=0;
+        }
+
+        for(const row of this.grid){
+          for(const p of row){
+            if(p) p.chainTag=0;
           }
-          for(const row of this.grid) for(const p of row) if(p) p.chainTag=0;
         }
       }
     }
@@ -2708,7 +3009,7 @@ class BattlePuzzleEngine{
   }
 
   debugMatch3Integrity(){
-    this.grid=this.emptyGrid();this.garbage=[];this.garbageQueue=[];this.incomingTelegraphs=[];this.conversion=null;this.clearWave=null;this.swap=null;this.fallTweens=[];this.garbageFallTweens=[];
+    this.grid=this.emptyGrid();this.garbage=[];this.garbageQueue=[];this.incomingTelegraphs=[];this.conversion=null;this.conversionQueue=[];this.clearWaves=[];this.swap=null;this.fallTweens=[];this.garbageFallTweens=[];
     const type=this.randType(),r=ROWS-2,start=Math.floor(Math.random()*4);
     const cells=[];
     for(let c=start;c<start+3;c++){const p=this.panel(type);this.grid[r][c]=p;cells.push(p);}
@@ -2721,7 +3022,7 @@ class BattlePuzzleEngine{
   }
 
   debugRealCombo4(){
-    this.grid=this.emptyGrid();this.garbage=[];this.garbageQueue=[];this.incomingTelegraphs=[];this.conversion=null;this.clearWave=null;this.swap=null;this.fallTweens=[];this.garbageFallTweens=[];
+    this.grid=this.emptyGrid();this.garbage=[];this.garbageQueue=[];this.incomingTelegraphs=[];this.conversion=null;this.conversionQueue=[];this.clearWaves=[];this.swap=null;this.fallTweens=[];this.garbageFallTweens=[];
     const support=battleSafeRowTypes(this.level);
     for(let c=0;c<COLS;c++) this.grid[ROWS-1][c]=this.panel(support[c]);
     const type=this.randType(),start=Math.floor(Math.random()*3);
@@ -2730,7 +3031,7 @@ class BattlePuzzleEngine{
   }
 
   debugConversionHold(){
-    this.grid=this.emptyGrid();this.garbage=[];this.garbageQueue=[];this.incomingTelegraphs=[];this.conversion=null;this.clearWave=null;this.swap=null;this.fallTweens=[];this.garbageFallTweens=[];
+    this.grid=this.emptyGrid();this.garbage=[];this.garbageQueue=[];this.incomingTelegraphs=[];this.conversion=null;this.conversionQueue=[];this.clearWaves=[];this.swap=null;this.fallTweens=[];this.garbageFallTweens=[];
     const g={id:this.garbageId++,x:0,row:ROWS-6,w:6,h:3,type:Math.random()<.5?'A':'B'};
     this.garbage=[g];
     this.startGarbageConversion([g.id],1);
@@ -2746,7 +3047,7 @@ class BattlePuzzleEngine{
   }
 
   debugDanger(){
-    this.grid=this.emptyGrid();this.garbage=[];this.garbageQueue=[];this.incomingTelegraphs=[];this.conversion=null;this.clearWave=null;this.swap=null;this.fallTweens=[];this.garbageFallTweens=[];
+    this.grid=this.emptyGrid();this.garbage=[];this.garbageQueue=[];this.incomingTelegraphs=[];this.conversion=null;this.conversionQueue=[];this.clearWaves=[];this.swap=null;this.fallTweens=[];this.garbageFallTweens=[];
     for(let r=0;r<ROWS;r++){
       const row=battleSafeRowTypes(this.level);
       for(let c=0;c<COLS;c++){
@@ -2759,7 +3060,7 @@ class BattlePuzzleEngine{
   debugConversionGravity(){
     this.grid=this.emptyGrid();
     this.garbage=[];this.garbageQueue=[];this.incomingTelegraphs=[];
-    this.clearWave=null;this.swap=null;this.fallTweens=[];this.garbageFallTweens=[];this.conversion=null;
+    this.clearWaves=[];this.swap=null;this.fallTweens=[];this.garbageFallTweens=[];this.conversion=null;
 
     // Conversion on the left, unrelated unsupported normal panel on the right.
     const g={id:this.garbageId++,x:0,row:ROWS-5,w:3,h:2,type:'A'};
@@ -2775,7 +3076,7 @@ class BattlePuzzleEngine{
   debugConversionSwap(){
     this.grid=this.emptyGrid();
     this.garbage=[];this.garbageQueue=[];this.incomingTelegraphs=[];
-    this.clearWave=null;this.swap=null;this.fallTweens=[];this.garbageFallTweens=[];this.conversion=null;
+    this.clearWaves=[];this.swap=null;this.fallTweens=[];this.garbageFallTweens=[];this.conversion=null;
 
     const support=battleSafeRowTypes(this.level);
     for(let c=0;c<COLS;c++) this.grid[ROWS-1][c]=this.panel(support[c]);
@@ -2794,7 +3095,7 @@ class BattlePuzzleEngine{
   debugColumnFall(skillInsert=false){
     this.grid=this.emptyGrid();
     this.garbage=[];this.garbageQueue=[];this.incomingTelegraphs=[];this.conversion=null;
-    this.clearWave=null;this.swap=null;this.fallTweens=[];
+    this.clearWaves=[];this.swap=null;this.fallTweens=[];
     this.garbageFallTweens=[];this.topOutMs=0;this.dead=false;
 
     const support=battleSafeRowTypes(this.level);
@@ -2893,6 +3194,12 @@ class BattlePuzzleEngine{
         revealed:this.conversion.revealed,
         phase:this.conversion.phase
       } : null,
+      clearWaves:this.clearWaves.map(w=>({
+        id:w.id,depth:w.depth,combo:w.combo,
+        elapsed:w.elapsed,total:w.total,
+        remaining:w.cells.length-w.removed.size
+      })),
+      queuedConversions:this.conversionQueue.length,
       stats:{...this.stats}
     };
   }
@@ -3234,8 +3541,8 @@ class BattleRenderer{
     for(let j=1;j<g.h;j++){c.beginPath();c.moveTo(x+5,y+j*TILE);c.lineTo(x+w-5,y+j*TILE);c.stroke();}
     c.restore();
   }
-  clearVisual(cell,index){
-    const w=this.engine.clearWave,cfg=this.engine.cfg(),blink=cfg.blinkCount*cfg.blinkIntervalMs,start=blink+cfg.prePopHoldMs;
+  clearVisual(wave,cell,index){
+    const w=wave,cfg=this.engine.cfg(),blink=cfg.blinkCount*cfg.blinkIntervalMs,start=blink+cfg.prePopHoldMs;
     if(w.elapsed<blink){const ph=(w.elapsed%cfg.blinkIntervalMs)/cfg.blinkIntervalMs;return {scale:1+Math.sin(w.elapsed/22)*.025,alpha:ph<.5?1:.25,eyes:w.elapsed>blink*.52};}
     const pop=start+index*cfg.clearStepDelay;
     if(w.elapsed<pop)return {scale:1,alpha:1,eyes:true};
@@ -3288,7 +3595,11 @@ class BattleRenderer{
     if(e.swap){hidden.add(`${e.swap.r},${e.swap.c}`);hidden.add(`${e.swap.r},${e.swap.c+1}`);}
     if(!e.swap&&e.touchDrag&&e.touchDrag.pairCol!=null){hidden.add(`${e.touchDrag.r},${e.touchDrag.pairCol}`);hidden.add(`${e.touchDrag.r},${e.touchDrag.pairCol+1}`);}
     for(const f of e.fallTweens)hidden.add(`${f.toR},${f.c}`);
-    if(e.clearWave)for(const x of e.clearWave.cells)hidden.add(`${x.r},${x.c}`);
+    for(const wave of e.clearWaves){
+      for(const x of wave.cells){
+        if(!wave.removed.has(x.panel.id)) hidden.add(`${x.r},${x.c}`);
+      }
+    }
     for(let r=0;r<ROWS;r++)for(let col=0;col<COLS;col++){
       const p=e.grid[r][col];
       if(p&&!hidden.has(`${r},${col}`)){
@@ -3302,7 +3613,14 @@ class BattleRenderer{
     }
     for(const g of e.garbage)this.garbage(g);
     for(const t of e.conversionPreview())this.block(t.type,t.c*TILE,this.y(t.r));
-    if(e.clearWave)e.clearWave.cells.forEach((cell,i)=>{if(e.clearWave.removed.has(cell.panel.id))return;const v=this.clearVisual(cell,i),x=cell.c*TILE,y=this.y(cell.r);this.block(cell.panel.type,x,y,v.scale,v.alpha,0,!v.eyes);if(v.eyes)this.eyes(x,y,v.alpha,cell.face);});
+    for(const wave of e.clearWaves){
+      wave.cells.forEach((cell,i)=>{
+        if(wave.removed.has(cell.panel.id)) return;
+        const v=this.clearVisual(wave,cell,i),x=cell.c*TILE,y=this.y(cell.r);
+        this.block(cell.panel.type,x,y,v.scale,v.alpha,0,!v.eyes);
+        if(v.eyes) this.eyes(x,y,v.alpha,cell.face);
+      });
+    }
     for(const f of e.fallTweens){const p=clamp(f.elapsed/f.duration,0,1);const row=f.fromR+(f.toR-f.fromR)*p;this.block(f.panel.type,f.c*TILE,this.y(row));}
     if(e.swap){const s=e.swap,raw=1-Math.pow(1-clamp(s.elapsed/s.duration,0,1),3),p=s.startProgress+(1-s.startProgress)*raw,y=this.y(s.r);if(s.left)this.block(s.left.type,(s.c+p)*TILE,y);if(s.right)this.block(s.right.type,(s.c+1-p)*TILE,y);}
     if(!e.swap&&e.touchDrag&&e.touchDrag.pairCol!=null){const d=e.touchDrag,p=clamp(d.progress,0,1),r=d.r,col=d.pairCol,y=this.y(r),left=e.grid[r][col],right=e.grid[r][col+1];if(left)this.block(left.type,(col+p)*TILE,y);if(right)this.block(right.type,(col+1-p)*TILE,y);}
@@ -3962,7 +4280,7 @@ async function copyQaSnapshot(){
   if(!s) return;
 
   const payload={
-    version:'0.9.1',
+    version:'0.9.2',
     timestamp:new Date().toISOString(),
     player:s.player.debugSnapshot(),
     enemy:s.enemy.debugSnapshot(),
@@ -4003,7 +4321,9 @@ function makePanel(type){
     chainTag:0,
     hoverMs:null,
     settleMs:0,
-    squashMs:0
+    squashMs:0,
+    conversionLocked:false,
+    conversionJobId:null
   };
 }
 
@@ -4256,6 +4576,7 @@ function reset(){
   garbageQueue=[];
   garbageQueueCooldownMs=0;
   garbageConversionJobs=[];
+  garbageConversionJobCounter=1;
   garbageSpawnSequence=0;
   touchDrag=null;
   lastInputMode='keyboard';
@@ -5108,6 +5429,7 @@ function supportStackReady(r,c){
     if(fallRecordForPanel(panel)) return false;
     if(panel.settleMs>0) return false;
     if(panel.hoverMs!==null) return false;
+    if(panel.conversionLocked) return false;
   }
 
   return true;
@@ -5124,6 +5446,8 @@ function isPotentialRunCell(r,c){
 
   if(!panel) return false;
   if(clearingHas(r,c)) return false;
+  if(swapLocksCell(r,c)) return false;
+  if(panel.conversionLocked) return false;
 
   const fall=fallRecordForPanel(panel);
 
@@ -5224,14 +5548,56 @@ function moveCursor(dx,dy){
   cursor.row=clamp(cursor.row+dy,FIRST_VISIBLE_ROW,ROWS-1);
 }
 
+function swapLocksCell(r,c){
+  return !!swapping && swapping.r===r && (swapping.c===c || swapping.c+1===c);
+}
+
+function fallRecordAtCell(r,c){
+  return fallAnim.find(f=>f.toRow===r && f.col===c) || null;
+}
+
+function fallingSwapEligible(record){
+  if(!record) return false;
+  return Math.max(0,record.duration-record.elapsed)<=FALLING_SWAP_WINDOW_MS;
+}
+
+function interceptFallingCellForSwap(r,c){
+  const record=fallRecordAtCell(r,c);
+  if(!record) return true;
+  if(!fallingSwapEligible(record)) return false;
+
+  // The panel is already stored at its logical destination while its
+  // physical presentation is still falling. In the final contact window,
+  // a swap may take ownership of that panel. Remove only this panel's
+  // falling state; other panels in the same/other fall groups continue.
+  fallAnim=fallAnim.filter(f=>f!==record);
+  record.panel.hoverMs=null;
+  record.panel.settleMs=0;
+  return true;
+}
+
 function canSwapCell(r,c){
   if(r<FIRST_VISIBLE_ROW || r>=ROWS || c<0 || c>=COLS){
     return false;
   }
 
   if(clearingHas(r,c)) return false;
-  if(fallLocksCell(r,c)) return false;
   if(garbageBlockAt(r,c)) return false;
+  if(swapLocksCell(r,c)) return false;
+
+  const panel=grid[r][c];
+
+  // PPC: panels in the coyote/hover state cannot be moved.
+  if(panel?.hoverMs!==null) return false;
+
+  // PPC: falling panels can be intercepted close to landing.
+  // The precise eligibility timing is still a tuning constant.
+  const fall=fallRecordAtCell(r,c);
+  if(fall && !fallingSwapEligible(fall)) return false;
+
+  // Converted panels are locally locked until their current conversion
+  // action finishes; this is deliberately local, never a board freeze.
+  if(panel?.conversionLocked) return false;
 
   return true;
 }
@@ -5243,6 +5609,10 @@ function swap(){
   const c=cursor.col;
 
   if(!canSwapCell(r,c) || !canSwapCell(r,c+1)) return;
+
+  if(!interceptFallingCellForSwap(r,c) || !interceptFallingCellForSwap(r,c+1)){
+    return;
+  }
 
   const left=grid[r][c];
   const right=grid[r][c+1];
@@ -5552,10 +5922,15 @@ function resolveGeneration(components,inheritedTag){
 // - a short quiet window then batches every ready match carrying that tag.
 // Two trios landing milliseconds apart therefore become ONE generation.
 function updateMatchResolution(dt){
-  if(swapping) return;
-
-  const cfg=difficultyConfig();
   const components=findMatchComponents();
+
+  // PPC: a swap/clear/fall elsewhere is not a global board phase.
+  // Only cells that are themselves swapping/hovering/falling/clearing are
+  // excluded by isReadyMatchCell()/isPotentialRunCell().
+  //
+  // Every component that becomes ready in THIS update may begin clearing,
+  // even if another clear wave is already active. This is what permits
+  // layering/staggering instead of waiting for an entire causal wave to land.
 
   const readyNormal=components.filter(
     c=>c.ready && c.inheritedTag===0
@@ -5563,36 +5938,17 @@ function updateMatchResolution(dt){
 
   if(readyNormal.length){
     resolveGeneration(readyNormal,0);
-    return;
   }
 
   const tags=[
     ...new Set(
       components
-        .filter(c=>c.inheritedTag>0)
+        .filter(c=>c.ready && c.inheritedTag>0)
         .map(c=>c.inheritedTag)
     )
   ].sort((a,b)=>a-b);
 
   for(const tag of tags){
-    const readyForTag=components.filter(
-      c=>c.ready && c.inheritedTag===tag
-    );
-
-    if(!readyForTag.length){
-      waveQuietByTag.set(tag,0);
-      continue;
-    }
-
-    if(hasTaggedWaveMotion(tag)){
-      waveQuietByTag.set(tag,0);
-      continue;
-    }
-
-    // V0.9: segment gravity already synchronizes panels belonging to the
-    // same causal fall. Once motion stops, commit the chain in THIS frame.
-    // This prevents a player from swapping away the supporting panel during
-    // a few artificial post-landing frames.
     const batch=components.filter(
       c=>c.ready && c.inheritedTag===tag
     );
@@ -5600,16 +5956,13 @@ function updateMatchResolution(dt){
     if(batch.length){
       waveQuietByTag.delete(tag);
       resolveGeneration(batch,tag);
-      return;
     }
   }
 
-  // Remove stale timers for chain tags no longer represented on the board.
+  // Keep the map only as compatibility/debug state. Chain readiness no longer
+  // waits for every same-tag panel elsewhere on the board to stop moving.
   for(const tag of [...waveQuietByTag.keys()]){
-    const stillExists=components.some(
-      c=>c.inheritedTag===tag
-    );
-
+    const stillExists=components.some(c=>c.inheritedTag===tag);
     if(!stillExists && !hasTaggedWaveMotion(tag)){
       waveQuietByTag.delete(tag);
     }
@@ -5786,7 +6139,8 @@ function updateClearGroups(dt){
         entry.done=true;
         addClearedPanelsToProgress(1);
 
-        // Physics remains held until the whole clear group completes.
+        // PPC pass: this popped cell is free immediately; gravity may use it
+        // on the next physics update while the rest of this clear group continues.
       }
     }
 
@@ -6051,6 +6405,7 @@ function scheduleGarbageConversion(blockIds,depth){
   if(!ids.length) return;
 
   const job={
+    id:garbageConversionJobCounter++,
     blockIds:ids,
     depth,
     elapsed:0,
@@ -6070,11 +6425,13 @@ function scheduleGarbageConversion(blockIds,depth){
   soundGarbageTrigger();
 }
 
-function makeConvertedPanel(type,chainDepth){
+function makeConvertedPanel(type,chainDepth,conversionJobId=null){
   const panel=makePanel(type);
   panel.chainTag=Math.max(0,chainDepth);
   panel.hoverMs=null;
   panel.settleMs=0;
+  panel.conversionLocked=conversionJobId!==null;
+  panel.conversionJobId=conversionJobId;
   return panel;
 }
 
@@ -6114,6 +6471,11 @@ function prepareGarbageConversionPlan(job){
   for(const block of blocks){
     for(let local=block.height-1;local>=0;local--){
       const r=block.row+local;
+
+      // PPC: only garbage currently visible on-screen converts.
+      // The hidden/buffer fragment remains garbage and can be exposed later.
+      if(r<FIRST_VISIBLE_ROW || r>=ROWS) continue;
+
       const types=conversionTypesForBlock(block);
       if(!rowMap.has(r)) rowMap.set(r,[]);
 
@@ -6143,21 +6505,55 @@ function prepareGarbageConversionPlan(job){
   return job.rows.length>0;
 }
 
-function commitCompleteGarbageConversion(job){
-  // CRITICAL V0.8.3 RULE:
-  // no converted panel becomes physical until EVERY line has finished
-  // its bottom->top / left->right reveal animation.
-  const allTokens=[];
-  for(const row of job.rows) allTokens.push(...row.tokens);
+function commitGarbageConversionRow(job,row){
+  if(!row) return;
 
-  garbageBlocks=garbageBlocks.filter(block=>!job.blockIds.includes(block.id));
+  // Rows are processed bottom -> top. Free only the garbage cells represented
+  // by this visible row, then materialize the converted panels immediately.
+  const touchedBlocks=[...new Set(row.tokens.map(t=>t.blockId))];
 
-  for(const token of allTokens){
+  for(const blockId of touchedBlocks){
+    const block=garbageBlockById(blockId);
+    if(!block) continue;
+
+    const bottom=block.row+block.height-1;
+    if(bottom===row.r){
+      block.height=Math.max(0,block.height-1);
+    }
+  }
+
+  garbageBlocks=garbageBlocks.filter(block=>block.height>0);
+
+  for(const token of row.tokens){
     if(
-      token.r>=0 && token.r<ROWS &&
+      token.r>=FIRST_VISIBLE_ROW && token.r<ROWS &&
       token.c>=0 && token.c<COLS
     ){
-      grid[token.r][token.c]=makeConvertedPanel(token.type,job.depth);
+      grid[token.r][token.c]=makeConvertedPanel(
+        token.type,
+        job.depth,
+        job.id
+      );
+    }
+  }
+
+  // Row is now a real part of the board. Gravity may act on it immediately;
+  // match/swap eligibility remains a local conversion lock until this action
+  // completes because PPC's exact converted-panel readiness timing is pending.
+  fallAccumulator=difficultyConfig().fallStepMs;
+}
+
+function commitCompleteGarbageConversion(job){
+  // Timing/readiness after a converted row is still unmeasured in PPC.
+  // Unlock only panels created by THIS conversion action; unrelated board
+  // entities have never been frozen.
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const panel=grid[r][c];
+      if(panel?.conversionJobId===job.id){
+        panel.conversionLocked=false;
+        panel.conversionJobId=null;
+      }
     }
   }
 
@@ -6170,8 +6566,6 @@ function garbagePreviewTokens(){
   const visible=[];
 
   for(const job of garbageConversionJobs){
-    visible.push(...job.revealedTokens);
-
     if(job.phase==='reveal'){
       const row=job.rows[job.rowIndex];
       if(row){
@@ -6235,7 +6629,7 @@ function updateGarbageConversions(dt){
     }
 
     if(job.revealedInRow>=row.tokens.length && job.elapsed>=55){
-      job.revealedTokens.push(...row.tokens);
+      commitGarbageConversionRow(job,row);
       job.rowIndex+=1;
       job.revealedInRow=0;
       job.elapsed=0;
@@ -6381,14 +6775,13 @@ function debugGarbageBurst(){
 // PANEL LOCAL TIMERS / SEGMENT GRAVITY — V0.9
 // ============================================================
 function collectUnsupportedSegments(){
-  // V0.9: clear atomicity is column-local, not a global gravity freeze.
-  // Columns touched by the active clear wait for the whole animation;
-  // unrelated unsupported panels continue to fall normally.
+  // PPC mechanics pass:
+  // clearing is cell-local. A panel that is still visibly clearing remains
+  // solid in its own cell, but once an individual cell pops, gravity in that
+  // column may proceed even while other clear entries are still animating.
   const segments=[];
 
   for(let c=0;c<COLS;c++){
-    if(columnHasActiveClear(c)) continue;
-
     let r=ROWS-2;
 
     while(r>=0){
@@ -6397,6 +6790,7 @@ function collectUnsupportedSegments(){
       if(
         !panel ||
         clearingHas(r,c) ||
+        swapLocksCell(r,c) ||
         fallRecordForPanel(panel) ||
         cellSolid(r+1,c)
       ){
@@ -6413,6 +6807,7 @@ function collectUnsupportedSegments(){
         if(
           !above ||
           clearingHas(top-1,c) ||
+          swapLocksCell(top-1,c) ||
           fallRecordForPanel(above) ||
           garbageBlockAt(top-1,c)
         ){
@@ -6503,8 +6898,9 @@ function updatePanelTimers(dt){
 // GRAVITY — contiguous vertical segments move as one body
 // ============================================================
 function doGravityStep(){
-  if(swapping || fallAnim.length) return false;
-
+  // Gravity is concurrent. Existing falling groups and a swap elsewhere do
+  // not freeze unrelated columns; collectUnsupportedSegments() filters only
+  // the locally occupied/locked entities.
   const cfg=difficultyConfig();
   const segments=collectUnsupportedSegments().filter(seg=>{
     const bottom=seg.members[seg.members.length-1]?.panel;
@@ -7108,13 +7504,11 @@ function update(dt){
   updateFalling(dt);
   updatePanelTimers(dt);
 
-  if(!swapping){
-    fallAccumulator+=dt;
+  fallAccumulator+=dt;
 
-    if(fallAccumulator>=cfg.fallStepMs){
-      fallAccumulator=0;
-      doGravityStep();
-    }
+  if(fallAccumulator>=cfg.fallStepMs){
+    fallAccumulator=0;
+    doGravityStep();
   }
 
   matchResolver.update(dt);
@@ -7893,6 +8287,14 @@ if(
 
   if(d.progress<TOUCH_SWAP_THRESHOLD) return;
 
+  if(
+    !interceptFallingCellForSwap(d.row,pairCol) ||
+    !interceptFallingCellForSwap(d.row,pairCol+1)
+  ){
+    stopContinuousTouchDrag();
+    return;
+  }
+
   const left=grid[d.row][pairCol];
   const right=grid[d.row][pairCol+1];
   if(!left && !right){
@@ -8333,7 +8735,7 @@ battleDebug.addEventListener('click',ev=>{
   }
   else if(b.dataset.battleDebug==='copySnapshot'){copyQaSnapshot();}
   else if(b.dataset.battleDebug==='conversionSwap'){s.player.debugConversionSwap();s.manager.push('QA // swap while garbage conversion active');}
-  else if(b.dataset.battleDebug==='atomicClear'){s.player.debugRealCombo4();s.manager.push('QA // gravity must wait for full clear wave');}
+  else if(b.dataset.battleDebug==='atomicClear'){s.player.debugRealCombo4();s.manager.push('QA // PPC: popped cells release locally while other clear entries continue');}
   else if(b.dataset.battleDebug==='landingTrigger'){s.player.debugColumnFall(true);s.manager.push('QA // landing match must trigger on contact frame');}
 });
 
@@ -8388,7 +8790,7 @@ window.__battleDebug={
 };
 
 window.__v085Debug={
-  version:'0.9.1',
+  version:'0.9.2',
   touchState:()=>touchDrag ? {...touchDrag} : null,
   arcadeInvariants:()=>{
     const errors=[];
