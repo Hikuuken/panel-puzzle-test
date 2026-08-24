@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Panel Puzzle V0.9.2.2</title>
+<title>Panel Puzzle V0.9.4 — PPC Mechanics Test Lab</title>
 <style>
 :root{
   --bg:#0c0c0d;
@@ -723,13 +723,130 @@ body.battle-view .battle-debug.qa-open{display:block}
   box-shadow:none;
 }
 .battle-debug{z-index:75!important}
+
+/* ============================================================
+   V0.9.4 // PPC MECHANICS TEST LAB
+   ============================================================ */
+.debug{
+  width:min(570px,calc(100vw - 28px));
+  max-height:min(88vh,820px);
+  overflow:auto;
+}
+.ppc94-lab{
+  margin-top:12px;padding-top:12px;
+  border-top:1px solid rgba(99,246,255,.18)
+}
+.ppc94-lab-head{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:10px
+}
+.ppc94-lab h4{
+  margin:0;color:#eaffff;font-size:13px;letter-spacing:.11em
+}
+.ppc94-lab-head span{
+  color:#87a09c;font:800 9px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace
+}
+.ppc94-gate{
+  padding:5px 7px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.13);
+  background:rgba(255,255,255,.04);white-space:nowrap
+}
+.ppc94-gate.pass{
+  color:#dfffb2;border-color:rgba(198,255,95,.55);
+  box-shadow:0 0 12px rgba(198,255,95,.08)
+}
+.ppc94-gate.fail{color:#ffd1d1;border-color:rgba(255,93,93,.55)}
+.ppc94-note{
+  margin:8px 0 10px!important;color:#9eb4b0!important;
+  font-size:10px!important;line-height:1.45!important
+}
+.ppc94-test-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px
+}
+.ppc94-test-grid button,.ppc94-main-actions button,.ppc94-chain-actions button{
+  min-height:34px;padding:6px 7px;border-radius:8px;
+  border:1px solid rgba(99,246,255,.13);
+  background:#172427;color:#eaffff;
+  font:850 9px/1.2 system-ui,sans-serif;text-align:left
+}
+.ppc94-test-grid button.pass{
+  border-color:rgba(198,255,95,.55);color:#eaffc8;background:#1c2a20
+}
+.ppc94-test-grid button.fail{
+  border-color:rgba(255,93,93,.68);color:#ffd2d2;background:#2a1b1d
+}
+.ppc94-main-actions{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px
+}
+.ppc94-main-actions button{
+  text-align:center;background:#203638;border-color:rgba(99,246,255,.35)
+}
+.ppc94-chain-box{
+  margin-top:9px;padding:9px;border-radius:10px;
+  background:rgba(255,255,255,.035);border:1px solid rgba(255,93,228,.16)
+}
+.ppc94-chain-box>b{display:block;font-size:10px;letter-spacing:.10em;color:#ffe1fa}
+.ppc94-chain-box>span{
+  display:block;margin:3px 0 7px;color:#9e949d;font-size:9px;line-height:1.35
+}
+.ppc94-chain-actions{display:flex;flex-wrap:wrap;gap:5px}
+.ppc94-chain-actions button{flex:1 1 92px;text-align:center}
+.ppc94-chain-result{
+  margin-top:7px;color:#b9ccca;
+  font:800 9px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace
+}
+.ppc94-status{
+  margin:9px 0 0;max-height:250px;overflow:auto;
+  white-space:pre-wrap;word-break:break-word;
+  padding:9px;border-radius:9px;background:#080d0f;color:#cfe7e3;
+  border:1px solid rgba(255,255,255,.07);
+  font:750 9px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace
+}
+.ppc94-chain-overlay{
+  position:fixed;inset:0;z-index:140;display:none;place-items:center;
+  background:rgba(0,0,0,.76);backdrop-filter:blur(6px);padding:18px
+}
+.ppc94-chain-overlay.show{display:grid}
+.ppc94-chain-card{
+  width:min(92vw,520px);padding:25px;border-radius:20px;text-align:center;
+  background:linear-gradient(180deg,#111b1d,#090d0f);
+  border:1px solid rgba(99,246,255,.28);
+  box-shadow:0 24px 80px rgba(0,0,0,.72),0 0 42px rgba(255,93,228,.07)
+}
+.ppc94-chain-kicker{
+  color:#91aaa6;font:900 9px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.12em
+}
+.ppc94-chain-big{
+  margin:18px 0 5px;color:#efffff;
+  font:1000 clamp(48px,12vw,92px)/.95 system-ui,sans-serif;
+  text-shadow:0 0 16px rgba(99,246,255,.65),0 0 38px rgba(255,93,228,.30)
+}
+.ppc94-chain-small{
+  color:#b8cbc8;font:850 11px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace
+}
+.ppc94-chain-progress{
+  height:5px;margin:16px 0;border-radius:999px;overflow:hidden;background:#202629
+}
+.ppc94-chain-progress i{
+  display:block;width:0;height:100%;
+  background:linear-gradient(90deg,#63f6ff,#ff5de4,#c6ff5f)
+}
+.ppc94-chain-overlay-actions{display:flex;gap:7px;justify-content:center}
+.ppc94-chain-overlay-actions button{
+  min-width:92px;background:#20292b;color:#fff;border:1px solid #3a4648
+}
+@media(max-width:520px){
+  .ppc94-test-grid{grid-template-columns:1fr}
+  .ppc94-main-actions{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
 <main class="app">
   <header class="topbar">
     <div>
-      <h1>PANEL PUZZLE V0.9.2.2</h1>
+      <h1>PANEL PUZZLE V0.9.4</h1>
       <div class="subtitle">BATTLE SANDBOX · AI + Versus + Garbage Exchange</div>
     </div>
 
@@ -768,7 +885,7 @@ body.battle-view .battle-debug.qa-open{display:block}
     <div class="layer show" id="menuLayer">
       <div class="menu-card">
         <h2>ELSEWHERE // PLAYGROUND</h2>
-        <p class="eyebrow">V0.8.4 CORE + FEEDBACK PASS</p>
+        <p class="eyebrow">V0.9.4 · PPC CORE + MECHANICS TEST LAB</p>
 
         <div class="mode-grid">
           <button class="mode-btn active" data-mode="endless">ENDLESS</button>
@@ -813,6 +930,7 @@ body.battle-view .battle-debug.qa-open{display:block}
 
         <div class="menu-actions">
           <button class="secondary-btn" id="settingsBtn">SETTINGS</button>
+          <button class="secondary-btn" id="ppcLabMenuBtn">PPC TEST LAB</button>
         </div>
 
         <div class="settings-panel" id="settingsPanel">
@@ -992,7 +1110,7 @@ body.battle-view .battle-debug.qa-open{display:block}
   </section>
 
   <section class="garbage-lab" id="garbageLab">
-    <h3>GARBAGE LAB // V0.9.2.2</h3>
+    <h3>GARBAGE LAB // V0.9.4</h3>
     <p>Simula attacchi VS senza nemico. I garbage entrano dalla coda, cadono come oggetti rigidi e reagiscono ai match adiacenti.</p>
 
     <div class="lab-row" aria-label="Garbage type">
@@ -1030,7 +1148,7 @@ body.battle-view .battle-debug.qa-open{display:block}
   </section>
 
   <div class="version">
-    F2 apre il Debug Lab. V0.9.2.2: PPC Stability Baseline · V0.9.1 physics restored · PPC timing pending.
+    F2 apre il PPC Mechanics Test Lab. V0.9.4: PPC core attivo · automatic regression suite · chain stress.
   </div>
 </main>
 
@@ -1047,8 +1165,81 @@ body.battle-view .battle-debug.qa-open{display:block}
     <button data-debug="timezero">Timer → 0</button>
     <button data-debug="garbage-chain">Garbage → CHAIN</button>
     <button data-debug="garbage-mixed">Garbage A/B</button>
+
   </div>
+
+  <section class="ppc94-lab" id="ppc94Lab">
+    <div class="ppc94-lab-head">
+      <div>
+        <h4>PPC MECHANICS TEST LAB</h4>
+        <span>V0.9.4 // deterministic regression harness</span>
+      </div>
+      <span class="ppc94-gate" id="ppc94Gate">GATE —</span>
+    </div>
+
+    <p class="ppc94-note">
+      Questi test costruiscono situazioni limite automaticamente. Non serve giocarli:
+      premi un test e leggi PASS/FAIL. RUN ALL è il gate meccanico verso V1.0.
+    </p>
+
+    <div class="ppc94-test-grid">
+      <button data-ppc-test="1">01 HOVER BASIC</button>
+      <button data-ppc-test="2">02 HOVER SWAP LOCK</button>
+      <button data-ppc-test="3">03 1 CELL / TICK FALL</button>
+      <button data-ppc-test="4">04 LAND → MATCH</button>
+      <button data-ppc-test="5">05 LAST-FRAME SWAP</button>
+      <button data-ppc-test="6">06 CHAIN LINEAGE</button>
+      <button data-ppc-test="7">07 LINEAGE EXPIRES</button>
+      <button data-ppc-test="8">08 ATOMIC CLEAR</button>
+      <button data-ppc-test="9">09 CLEAR + REMOTE FALL</button>
+      <button data-ppc-test="10">10 CLEAR + REMOTE SWAP</button>
+      <button data-ppc-test="11">11 GARBAGE + GRAVITY</button>
+      <button data-ppc-test="12">12 GARBAGE CONVERSION</button>
+      <button data-ppc-test="13">13 TOP-OUT RESET</button>
+      <button data-ppc-test="14">14 TOP-OUT FREEZE</button>
+      <button data-ppc-test="15">15 TOP-OUT DEATH</button>
+      <button data-ppc-test="16">16 COMBO vs CHAIN</button>
+      <button data-ppc-test="17">17 BATTLE TORTURE</button>
+    </div>
+
+    <div class="ppc94-main-actions">
+      <button data-ppc-action="runAll">RUN ALL 17 TESTS</button>
+      <button data-ppc-action="copyReport">COPY TEST REPORT</button>
+    </div>
+
+    <div class="ppc94-chain-box">
+      <b>CHAIN SHOWCASE / STRESS</b>
+      <span>Visualizza contatori oltre x9 e verifica che depth/UI non collassino.</span>
+      <div class="ppc94-chain-actions">
+        <button data-ppc-chain="10">CHAIN x10</button>
+        <button data-ppc-chain="15">CHAIN x15</button>
+        <button data-ppc-chain="20">CHAIN x20</button>
+        <button data-ppc-chain="30">CHAIN x30</button>
+        <button data-ppc-action="chainStep">STEP +1</button>
+        <button data-ppc-action="chainStop">STOP</button>
+      </div>
+      <div class="ppc94-chain-result" id="ppc94ChainResult">CHAIN STRESS — not run</div>
+    </div>
+
+    <pre class="ppc94-status" id="ppc94TestStatus">PPC V0.9.4 QA ready.
+Run a single test or RUN ALL.</pre>
+  </section>
 </aside>
+
+<div class="ppc94-chain-overlay" id="ppc94ChainOverlay" aria-hidden="true">
+  <div class="ppc94-chain-card">
+    <div class="ppc94-chain-kicker">CHAIN SHOWCASE // SYNTHETIC UI + DEPTH STRESS</div>
+    <div class="ppc94-chain-big" id="ppc94ChainBig">CHAIN x2</div>
+    <div class="ppc94-chain-small" id="ppc94ChainSmall">target x10</div>
+    <div class="ppc94-chain-progress"><i id="ppc94ChainProgress"></i></div>
+    <div class="ppc94-chain-overlay-actions">
+      <button id="ppc94ChainPauseBtn" type="button">PAUSE</button>
+      <button id="ppc94ChainNextBtn" type="button">STEP +1</button>
+      <button id="ppc94ChainCloseBtn" type="button">CLOSE</button>
+    </div>
+  </div>
+</div>
+
 <div id="battleSelfTest" data-status="idle" style="display:none"></div>
 
 <script>
@@ -4003,7 +4194,7 @@ async function copyQaSnapshot(){
   if(!s) return;
 
   const payload={
-    version:'0.9.2.2',
+    version:'0.9.4',
     timestamp:new Date().toISOString(),
     player:s.player.debugSnapshot(),
     enemy:s.enemy.debugSnapshot(),
@@ -8429,7 +8620,7 @@ window.__battleDebug={
 };
 
 window.__v085Debug={
-  version:'0.9.2.2',
+  version:'0.9.4',
   touchState:()=>touchDrag ? {...touchDrag} : null,
   ppcReference:()=>({...PPC_MECHANICS_REFERENCE}),
   arcadeLockSnapshot:()=>{
@@ -8448,7 +8639,7 @@ window.__v085Debug={
       }
     }
     return {
-      version:'0.9.2.2',
+      version:'0.9.4',
       swapping:!!swapping,
       clearGroups:clearGroups.length,
       fallAnim:fallAnim.length,
@@ -8524,8 +8715,8 @@ updateGarbageLabStatus();
 showMenu();
 requestAnimationFrame(loop);
 /* ============================================================
-   PANEL PUZZLE V0.9.3 — PPC CORE MECHANICS PASS
-   Runtime override injected into V0.9.2.2 stable.
+   PANEL PUZZLE V0.9.4 — PPC CORE MECHANICS KERNEL
+   Integrated mechanics kernel carried forward from the validated V0.9.3 pass.
    ROM-derived core rules:
    - panel-local hover/fall state
    - 1 cell / GBC update gravity after hover
@@ -8539,7 +8730,7 @@ requestAnimationFrame(loop);
    ============================================================ */
 
 const PPC93_RUNTIME_PATCH = true;
-const PPC93_VERSION = '0.9.3';
+const PPC93_VERSION = '0.9.4';
 const PPC93_FRAME_MS = 1000 / 59.7275;
 const PPC93_HOVER_TICKS = [14,13,12,11,10,9,8,8,7,7];
 const PPC93_POP_TICKS = [9,9,8,8,8,8,8,7,7,7];
@@ -9700,7 +9891,619 @@ window.__ppc93 = {
   })
 };
 
-console.info('[Panel Puzzle] V0.9.3 PPC Core Mechanics Pass active',window.__ppc93);
+console.info('[Panel Puzzle] V0.9.4 PPC Core + Mechanics Test Lab active',window.__ppc93);
+
+
+// ============================================================
+// V0.9.4 // PPC MECHANICS TEST LAB
+// Deterministic tests target the patched PPC kernel directly.
+// ============================================================
+const PPC94_VERSION='0.9.4';
+const ppc94Results=new Map();
+let ppc94LastReport='';
+let ppc94ShowcaseTimer=null;
+let ppc94ShowcasePaused=false;
+let ppc94ShowcaseDepth=1;
+let ppc94ShowcaseTarget=10;
+
+const ppc94TestStatus=document.getElementById('ppc94TestStatus');
+const ppc94Gate=document.getElementById('ppc94Gate');
+const ppc94ChainResult=document.getElementById('ppc94ChainResult');
+const ppc94ChainOverlay=document.getElementById('ppc94ChainOverlay');
+const ppc94ChainBig=document.getElementById('ppc94ChainBig');
+const ppc94ChainSmall=document.getElementById('ppc94ChainSmall');
+const ppc94ChainProgress=document.getElementById('ppc94ChainProgress');
+const ppc94ChainPauseBtn=document.getElementById('ppc94ChainPauseBtn');
+const ppc94ChainNextBtn=document.getElementById('ppc94ChainNextBtn');
+const ppc94ChainCloseBtn=document.getElementById('ppc94ChainCloseBtn');
+const ppcLabMenuBtn=document.getElementById('ppcLabMenuBtn');
+
+function ppc94SafeType(c,offset=0){
+  return (c+offset)%Math.max(5,activeTypeCount(10));
+}
+
+function ppc94Harness(level=10){
+  const events=[],attacks=[];
+  const engine=new BattlePuzzleEngine({
+    name:'PPC94_TEST',
+    level,
+    onEvent:e=>events.push({
+      type:e.type,
+      combo:e.combo||0,
+      depth:e.depth||0,
+      maxChain:e.maxChain||0
+    }),
+    onAttack:(specs,meta)=>attacks.push({
+      specs:specs.map(x=>({...x})),
+      combo:meta?.combo||0,
+      depth:meta?.depth||0
+    }),
+    onLose:()=>{}
+  });
+
+  engine.grid=engine.emptyGrid();
+  engine.nextRow=battleSafeRowTypes(level).map(t=>engine.panel(t));
+  engine.garbage=[];
+  engine.garbageQueue=[];
+  engine.incomingTelegraphs=[];
+  engine.garbageFallTweens=[];
+  engine.conversion=null;
+  engine.clearWave=null;
+  engine.swap=null;
+  engine.fallTweens=[];
+  engine.gravityMs=0;
+  engine.riseOffset=0;
+  engine.forceRise=false;
+  engine.forceRiseHoldMs=0;
+  engine.topOutMs=0;
+  engine.dead=false;
+  engine.paused=false;
+  engine.matchQuietMs=0;
+  engine.audioChainActive=false;
+  engine.audioMaxChain=1;
+  return {engine,events,attacks};
+}
+
+function ppc94Panel(engine,type=0,chainTag=0){
+  const p=engine.panel(type);
+  ppc93NormalizePanel(p);
+  p.chainTag=chainTag;
+  p.hoverMs=null;
+  p.ppcFallActive=false;
+  p.postGarbageMs=0;
+  p.settleMs=0;
+  return p;
+}
+
+function ppc94Support(engine,row=ROWS-1,offset=0){
+  for(let c=0;c<COLS;c++){
+    engine.grid[row][c]=ppc94Panel(engine,ppc94SafeType(c,offset));
+  }
+}
+
+function ppc94FindPanelRow(engine,id){
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      if(engine.grid[r][c]?.id===id) return {r,c};
+    }
+  }
+  return null;
+}
+
+function ppc94Result(ok,details={}){
+  return {ok:!!ok,...details};
+}
+
+function ppc94Test01(){
+  const {engine:e}=ppc94Harness(10);
+  const c=2,start=ROWS-3;
+  e.grid[ROWS-1][c]=ppc94Panel(e,1);
+  const p=ppc94Panel(e,2);e.grid[start][c]=p;
+  e.updatePanelTimers(0);
+  const initial=p.hoverMs;
+  e.updatePanelTimers(Math.max(0,initial-PPC93_FRAME_MS*.5));
+  const blockedMove=e.doGravityStep()===false;
+  e.updatePanelTimers(PPC93_FRAME_MS);
+  const moved=e.doGravityStep();
+  const pos=ppc94FindPanelRow(e,p.id);
+  return ppc94Result(initial>0 && blockedMove && moved && pos?.r===start+1,{
+    expectedHoverMs:e.cfg().hoverMs,initialHoverMs:initial,blockedMove,moved,row:pos?.r
+  });
+}
+
+function ppc94Test02(){
+  const {engine:e}=ppc94Harness(10);
+  const r=ROWS-3,c=2;
+  e.grid[ROWS-1][c]=ppc94Panel(e,1);
+  const p=ppc94Panel(e,2);e.grid[r][c]=p;
+  e.updatePanelTimers(0);
+  const lockedDuringHover=!e.canSwapCell(r,c);
+  p.hoverMs=0;p.ppcFallActive=true;
+  const allowedWhileFalling=e.canSwapCell(r,c);
+  return ppc94Result(lockedDuringHover&&allowedWhileFalling,{
+    lockedDuringHover,allowedWhileFalling
+  });
+}
+
+function ppc94Test03(){
+  const {engine:e}=ppc94Harness(10);
+  const c=2,start=ROWS-6;
+  e.grid[ROWS-1][c]=ppc94Panel(e,1);
+  const p=ppc94Panel(e,2);p.hoverMs=0;p.ppcFallActive=true;e.grid[start][c]=p;
+  const rows=[];
+  for(let i=0;i<3;i++){
+    const moved=e.doGravityStep();
+    rows.push(ppc94FindPanelRow(e,p.id)?.r ?? -1);
+    if(!moved) break;
+  }
+  return ppc94Result(rows.length===3&&rows[0]===start+1&&rows[1]===start+2&&rows[2]===start+3,{
+    start,rows,rule:'exactly one logical cell per gravity tick'
+  });
+}
+
+function ppc94Test04(){
+  const {engine:e}=ppc94Harness(10);
+  const c=2,t=1;
+  e.grid[ROWS-2][c]=ppc94Panel(e,t);
+  e.grid[ROWS-1][c]=ppc94Panel(e,t);
+  const p=ppc94Panel(e,t);p.hoverMs=0;p.ppcFallActive=true;e.grid[ROWS-4][c]=p;
+  e.gravityMs=0;
+  e.update(e.cfg().fallStepMs);
+  return ppc94Result(!!e.clearWave&&e.clearWave.combo===3&&e.clearWave.depth===1,{
+    clearStarted:!!e.clearWave,combo:e.clearWave?.combo||0,depth:e.clearWave?.depth||0
+  });
+}
+
+function ppc94Test05(){
+  const {engine:e}=ppc94Harness(10);
+  ppc94Support(e,ROWS-1,1);
+  const r=ROWS-2,c=2;
+  const left=ppc94Panel(e,0);left.hoverMs=0;left.ppcFallActive=true;
+  const right=ppc94Panel(e,3);
+  e.grid[r][c]=left;e.grid[r][c+1]=right;
+  const allowed=e.canSwapPair(r,c);
+  const started=e.startSwap(r,c);
+  const immediate=e.grid[r][c]===right&&e.grid[r][c+1]===left;
+  const duration=e.swap?.duration||0;
+  e.update(duration+0.01);
+  const finalized=!e.swap;
+  return ppc94Result(allowed&&started&&immediate&&finalized,{
+    allowed,started,logicalCommitImmediate:immediate,
+    visualDurationMs:duration,expectedMs:4*PPC93_FRAME_MS,finalized
+  });
+}
+
+function ppc94Test06(){
+  const {engine:e}=ppc94Harness(10);
+  const c=2,t=2;
+  e.grid[ROWS-2][c]=ppc94Panel(e,t);
+  e.grid[ROWS-1][c]=ppc94Panel(e,t);
+  const p=ppc94Panel(e,t,1);p.hoverMs=0;p.ppcFallActive=true;e.grid[ROWS-4][c]=p;
+  e.update(e.cfg().fallStepMs);
+  return ppc94Result(!!e.clearWave&&e.clearWave.depth===2,{
+    chainDepth:e.clearWave?.depth||0,expected:2,lineageBefore:1
+  });
+}
+
+function ppc94Test07(){
+  const {engine:e}=ppc94Harness(10);
+  ppc94Support(e);
+  const p=ppc94Panel(e,4,3);
+  e.grid[ROWS-2][2]=p;
+  e.ppcExpireStableLineage([]);
+  return ppc94Result(p.chainTag===0,{remainingLineage:p.chainTag});
+}
+
+function ppc94Test08(){
+  const {engine:e}=ppc94Harness(10);
+  const row=ROWS-2,t=1;
+  ppc94Support(e);
+  const cells=[];
+  for(let c=0;c<3;c++){
+    const p=ppc94Panel(e,t);e.grid[row][c]=p;cells.push({r:row,c,panel:p});
+  }
+  const above=ppc94Panel(e,4);e.grid[row-1][0]=above;
+  e.beginMatch(cells);
+  const cfg=e.cfg();
+  const start=cfg.blinkCount*cfg.blinkIntervalMs+cfg.prePopHoldMs;
+  e.updateClear(start+cfg.clearPopMs+1);
+  const occupiedAfterFirst=cells.every(x=>e.grid[x.r][x.c]===x.panel);
+  const aboveStill=e.grid[row-1][0]===above;
+  e.updateClear(e.clearWave ? e.clearWave.total+cfg.clearStepDelay*4+20 : 0);
+  const allGone=cells.every(x=>e.grid[x.r][x.c]!==x.panel);
+  return ppc94Result(occupiedAfterFirst&&aboveStill&&allGone,{
+    occupiedAfterFirstVisualPop:occupiedAfterFirst,aboveStillSupported:aboveStill,allGoneAtEnd:allGone
+  });
+}
+
+function ppc94Test09(){
+  const {engine:e}=ppc94Harness(10);
+  ppc94Support(e);
+  const row=ROWS-2,t=1,cells=[];
+  for(let c=0;c<3;c++){
+    const p=ppc94Panel(e,t);e.grid[row][c]=p;cells.push({r:row,c,panel:p});
+  }
+  e.beginMatch(cells);
+  const p=ppc94Panel(e,4);p.hoverMs=0;p.ppcFallActive=true;
+  e.grid[ROWS-4][5]=p;
+  const before=ppc94FindPanelRow(e,p.id)?.r;
+  const moved=e.doGravityStep();
+  const after=ppc94FindPanelRow(e,p.id)?.r;
+  return ppc94Result(!!e.clearWave&&moved&&after===before+1,{
+    clearActive:!!e.clearWave,before,after
+  });
+}
+
+function ppc94Test10(){
+  const {engine:e}=ppc94Harness(10);
+  ppc94Support(e);
+  const row=ROWS-2,t=1,cells=[];
+  for(let c=0;c<3;c++){
+    const p=ppc94Panel(e,t);e.grid[row][c]=p;cells.push({r:row,c,panel:p});
+  }
+  e.beginMatch(cells);
+  e.grid[row][4]=ppc94Panel(e,3);
+  e.grid[row][5]=ppc94Panel(e,4);
+  const remoteAllowed=e.canSwapPair(row,4);
+  const started=remoteAllowed?e.startSwap(row,4):false;
+  return ppc94Result(!!e.clearWave&&remoteAllowed&&started,{
+    clearActive:!!e.clearWave,remoteAllowed,started
+  });
+}
+
+function ppc94Test11(){
+  const {engine:e}=ppc94Harness(10);
+  ppc94Support(e);
+  const g={id:e.garbageId++,x:0,row:ROWS-5,w:3,h:2,type:'A'};
+  e.garbage=[g];e.startGarbageConversion([g.id],1);
+  const p=ppc94Panel(e,4);p.hoverMs=0;p.ppcFallActive=true;e.grid[ROWS-4][5]=p;
+  const before=ppc94FindPanelRow(e,p.id)?.r;
+  const moved=e.doGravityStep();
+  const after=ppc94FindPanelRow(e,p.id)?.r;
+  return ppc94Result(!!e.conversion&&moved&&after===before+1,{
+    conversionActive:!!e.conversion,before,after
+  });
+}
+
+function ppc94Test12(){
+  const {engine:e}=ppc94Harness(10);
+  const g={id:e.garbageId++,x:0,row:ROWS-3,w:3,h:2,type:'A'};
+  e.garbage=[g];e.startGarbageConversion([g.id],2);
+  const cell=e.cfg().garbageCellMs;
+  e.updateConversion(cell*3+1);
+  const afterFirstHeight=e.garbage[0]?.h??0;
+  const firstReleased=[0,1,2].map(c=>e.grid[ROWS-2][c]).filter(Boolean);
+  const timers=firstReleased.map(p=>p.postGarbageMs||0);
+  const firstOk=afterFirstHeight===1&&firstReleased.length===3&&timers.every(v=>v>0)&&!!e.conversion;
+  e.updateConversion(cell*3+1);
+  const done=!e.conversion&&e.garbage.length===0;
+  return ppc94Result(firstOk&&done,{
+    afterFirstHeight,firstReleased:firstReleased.length,postGarbageTimers:timers,done
+  });
+}
+
+function ppc94FillSolidColumn(e,c=0){
+  for(let r=0;r<ROWS;r++) e.grid[r][c]=ppc94Panel(e,(r%5));
+}
+
+function ppc94Test13(){
+  const {engine:e}=ppc94Harness(10);
+  ppc94FillSolidColumn(e,0);
+  e.topOutMs=123;
+  e.grid[0][0]=null;
+  e.checkTopOut(PPC93_FRAME_MS);
+  return ppc94Result(e.topOutMs===0,{counter:e.topOutMs});
+}
+
+function ppc94Test14(){
+  const {engine:e}=ppc94Harness(10);
+  ppc94FillSolidColumn(e,0);
+  e.topOutMs=77;
+  e.clearWave={cells:[],removed:new Set(),elapsed:0,total:99999,garbageTargets:[],attackSpecs:[]};
+  e.checkTopOut(PPC93_FRAME_MS*20);
+  return ppc94Result(e.topOutMs===77&&!e.dead,{counter:e.topOutMs,dead:e.dead});
+}
+
+function ppc94Test15(){
+  const {engine:e}=ppc94Harness(10);
+  ppc94FillSolidColumn(e,0);
+  const limit=e.cfg().topOutGraceMs;
+  e.checkTopOut(limit+PPC93_FRAME_MS);
+  return ppc94Result(e.dead===true,{limitMs:limit,counter:e.topOutMs,dead:e.dead});
+}
+
+function ppc94Test16(){
+  const A=ppc94Harness(10).engine;
+  ppc94Support(A);
+  const row=ROWS-2,t=1,cellsA=[];
+  for(let c=0;c<4;c++){const p=ppc94Panel(A,t,0);A.grid[row][c]=p;cellsA.push({r:row,c,panel:p});}
+  A.beginMatch(cellsA);
+  const combo={combo:A.clearWave?.combo||0,depth:A.clearWave?.depth||0};
+
+  const B=ppc94Harness(10).engine;
+  ppc94Support(B);
+  const cellsB=[];
+  for(let c=0;c<3;c++){const p=ppc94Panel(B,t,1);B.grid[row][c]=p;cellsB.push({r:row,c,panel:p});}
+  B.beginMatch(cellsB);
+  const chain={combo:B.clearWave?.combo||0,depth:B.clearWave?.depth||0};
+  return ppc94Result(combo.combo===4&&combo.depth===1&&chain.combo===3&&chain.depth===2,{combo,chain});
+}
+
+function ppc94Test17(){
+  const {engine:e}=ppc94Harness(15);
+  ppc94Support(e);
+  const g={id:e.garbageId++,x:0,row:ROWS-5,w:2,h:2,type:'A'};
+  e.garbage=[g];e.startGarbageConversion([g.id],1);
+
+  const p=ppc94Panel(e,4);p.hoverMs=0;p.ppcFallActive=true;e.grid[ROWS-5][5]=p;
+  e.grid[ROWS-2][3]=ppc94Panel(e,1);
+  e.grid[ROWS-2][4]=ppc94Panel(e,2);
+  e.startSwap(ROWS-2,3);
+  e.queueGarbage({w:3,h:1,type:'B',source:'QA'});
+
+  let error=null;
+  let inv={ok:true,errors:[]};
+  try{
+    for(let i=0;i<360;i++){
+      e.update(PPC93_FRAME_MS);
+      inv=e.assertInvariants();
+      if(!inv.ok){error=`frame ${i}: ${inv.errors.join('; ')}`;break;}
+      if(e.dead){e.dead=false;e.topOutMs=0;}
+    }
+  }catch(err){
+    error=String(err?.stack||err);
+  }
+  return ppc94Result(!error&&inv.ok,{
+    error,remainingGarbage:e.garbage.length,queue:e.garbageQueue.length,
+    conversion:!!e.conversion,panels:e.grid.flat().filter(Boolean).length,
+    invariantErrors:inv.errors||[]
+  });
+}
+
+const PPC94_TESTS=[
+  {id:1,name:'Hover Basic',run:ppc94Test01},
+  {id:2,name:'Hover Swap Lock',run:ppc94Test02},
+  {id:3,name:'1 Cell / Tick Fall',run:ppc94Test03},
+  {id:4,name:'Landing → Match',run:ppc94Test04},
+  {id:5,name:'Last-frame Swap / Immediate Commit',run:ppc94Test05},
+  {id:6,name:'Chain Lineage',run:ppc94Test06},
+  {id:7,name:'Lineage Expires',run:ppc94Test07},
+  {id:8,name:'Atomic Clear',run:ppc94Test08},
+  {id:9,name:'Clear + Remote Fall',run:ppc94Test09},
+  {id:10,name:'Clear + Remote Swap',run:ppc94Test10},
+  {id:11,name:'Garbage + Gravity',run:ppc94Test11},
+  {id:12,name:'Garbage Conversion',run:ppc94Test12},
+  {id:13,name:'Top-out Reset',run:ppc94Test13},
+  {id:14,name:'Top-out Freeze',run:ppc94Test14},
+  {id:15,name:'Top-out Death',run:ppc94Test15},
+  {id:16,name:'Combo vs Chain',run:ppc94Test16},
+  {id:17,name:'Battle Concurrency Torture',run:ppc94Test17}
+];
+
+function ppc94SetButtonResult(id,ok){
+  const b=debugPanel?.querySelector(`[data-ppc-test="${id}"]`);
+  if(!b) return;
+  b.classList.toggle('pass',!!ok);
+  b.classList.toggle('fail',!ok);
+}
+
+function ppc94BuildReport(){
+  const ordered=PPC94_TESTS.map(t=>{
+    const r=ppc94Results.get(t.id);
+    return {
+      id:t.id,
+      name:t.name,
+      status:r ? (r.ok?'PASS':'FAIL') : 'NOT RUN',
+      details:r ? Object.fromEntries(Object.entries(r).filter(([k])=>k!=='ok')) : null
+    };
+  });
+  const run=ordered.filter(x=>x.status!=='NOT RUN');
+  const pass=run.filter(x=>x.status==='PASS').length;
+  const fail=run.filter(x=>x.status==='FAIL').length;
+  const complete=run.length===PPC94_TESTS.length;
+  const gate=complete&&fail===0;
+  const report={
+    build:PPC94_VERSION,
+    mechanicsKernel:PPC93_VERSION,
+    generatedAt:new Date().toISOString(),
+    summary:{run:run.length,pass,fail,total:PPC94_TESTS.length,gate},
+    tests:ordered
+  };
+  ppc94LastReport=JSON.stringify(report,null,2);
+  return report;
+}
+
+function ppc94RenderReport(focus=null){
+  const report=ppc94BuildReport();
+  const s=report.summary;
+  if(ppc94Gate){
+    ppc94Gate.textContent=s.gate?'V1.0 GATE READY':(s.run===17?`GATE FAIL ${s.fail}`:`GATE ${s.run}/17`);
+    ppc94Gate.classList.toggle('pass',s.gate);
+    ppc94Gate.classList.toggle('fail',s.run===17&&!s.gate);
+  }
+  if(ppc94TestStatus){
+    const lines=[
+      `PANEL PUZZLE V${PPC94_VERSION} // PPC CORE TEST SUITE`,
+      `${s.pass} PASS · ${s.fail} FAIL · ${s.run}/${s.total} RUN`,
+      s.gate?'V1.0 MECHANICS GATE: READY':'V1.0 MECHANICS GATE: NOT CLEARED',
+      ''
+    ];
+    const tests=focus ? [focus] : report.tests.filter(x=>x.status!=='NOT RUN');
+    for(const t of tests){
+      lines.push(`${String(t.id).padStart(2,'0')} ${t.status.padEnd(7)} ${t.name}`);
+      if(t.status==='FAIL'&&t.details) lines.push(`   ${JSON.stringify(t.details)}`);
+    }
+    ppc94TestStatus.textContent=lines.join('\n');
+  }
+  return report;
+}
+
+function ppc94RunTest(id){
+  const test=PPC94_TESTS.find(t=>t.id===Number(id));
+  if(!test) return null;
+  let result;
+  try{
+    result=test.run();
+    if(!result||typeof result.ok!=='boolean') result={ok:false,error:'test returned invalid result'};
+  }catch(err){
+    result={ok:false,error:String(err?.stack||err)};
+  }
+  ppc94Results.set(test.id,result);
+  ppc94SetButtonResult(test.id,result.ok);
+  ppc94RenderReport({
+    id:test.id,name:test.name,status:result.ok?'PASS':'FAIL',
+    details:Object.fromEntries(Object.entries(result).filter(([k])=>k!=='ok'))
+  });
+  return result;
+}
+
+function ppc94RunAll(){
+  ppc94Results.clear();
+  for(const t of PPC94_TESTS){
+    ppc94RunTest(t.id);
+  }
+  return ppc94RenderReport();
+}
+
+async function ppc94CopyReport(){
+  const report=ppc94BuildReport();
+  const value=JSON.stringify(report,null,2);
+  try{
+    await navigator.clipboard.writeText(value);
+    if(ppc94TestStatus) ppc94TestStatus.textContent=`TEST REPORT COPIED // ${value.length} chars\n\n`+ppc94TestStatus.textContent;
+  }catch(_){
+    if(ppc94TestStatus) ppc94TestStatus.textContent='Clipboard unavailable. Report printed to console.';
+    console.log(value);
+  }
+}
+
+function ppc94ChainStress(target){
+  const depths=[];
+  let ok=true,error=null;
+  try{
+    for(let depth=1;depth<=target;depth++){
+      const {engine:e}=ppc94Harness(10);
+      ppc94Support(e);
+      const row=ROWS-2,t=depth%5,cells=[];
+      for(let c=0;c<3;c++){
+        const p=ppc94Panel(e,t,Math.max(0,depth-1));
+        e.grid[row][c]=p;cells.push({r:row,c,panel:p});
+      }
+      e.beginMatch(cells);
+      const got=e.clearWave?.depth||0;
+      depths.push(got);
+      if(got!==depth){ok=false;error=`expected depth ${depth}, got ${got}`;break;}
+    }
+  }catch(err){
+    ok=false;error=String(err?.stack||err);
+  }
+  const result={ok,target,maxDepth:depths.at(-1)||0,error};
+  if(ppc94ChainResult){
+    ppc94ChainResult.textContent=ok
+      ? `CHAIN STRESS x${target} // PASS · max depth ${result.maxDepth}`
+      : `CHAIN STRESS x${target} // FAIL · ${error}`;
+  }
+  return result;
+}
+
+function ppc94RenderShowcase(){
+  if(!ppc94ChainOverlay) return;
+  ppc94ChainOverlay.classList.add('show');
+  ppc94ChainOverlay.setAttribute('aria-hidden','false');
+  ppc94ChainBig.textContent=`CHAIN x${ppc94ShowcaseDepth}`;
+  ppc94ChainSmall.textContent=`target x${ppc94ShowcaseTarget} · ${ppc94ShowcasePaused?'PAUSED / STEP MODE':'AUTO'}`;
+  const progress=clamp((ppc94ShowcaseDepth-1)/Math.max(1,ppc94ShowcaseTarget-1),0,1);
+  ppc94ChainProgress.style.width=`${progress*100}%`;
+  ppc94ChainPauseBtn.textContent=ppc94ShowcasePaused?'RESUME':'PAUSE';
+}
+
+function ppc94ShowcaseIncrement(){
+  if(ppc94ShowcaseDepth>=ppc94ShowcaseTarget){
+    clearInterval(ppc94ShowcaseTimer);ppc94ShowcaseTimer=null;
+    ppc94ShowcasePaused=true;
+    ppc94ChainStress(ppc94ShowcaseTarget);
+    ppc94RenderShowcase();
+    return;
+  }
+  ppc94ShowcaseDepth++;
+  if(typeof soundChain==='function' && audioEnabled){
+    soundChain(Math.min(ppc94ShowcaseDepth,12));
+  }
+  ppc94RenderShowcase();
+}
+
+function ppc94StartChainShowcase(target=10){
+  clearInterval(ppc94ShowcaseTimer);
+  ppc94ShowcaseTarget=Math.max(2,Number(target)||10);
+  ppc94ShowcaseDepth=2;
+  ppc94ShowcasePaused=false;
+  ppc94ChainStress(ppc94ShowcaseTarget);
+  ppc94RenderShowcase();
+  ppc94ShowcaseTimer=setInterval(()=>{
+    if(!ppc94ShowcasePaused) ppc94ShowcaseIncrement();
+  },430);
+}
+
+function ppc94StopShowcase(close=true){
+  clearInterval(ppc94ShowcaseTimer);ppc94ShowcaseTimer=null;
+  ppc94ShowcasePaused=true;
+  if(close&&ppc94ChainOverlay){
+    ppc94ChainOverlay.classList.remove('show');
+    ppc94ChainOverlay.setAttribute('aria-hidden','true');
+  }else{
+    ppc94RenderShowcase();
+  }
+}
+
+debugPanel?.addEventListener('click',e=>{
+  const testButton=e.target.closest('[data-ppc-test]');
+  if(testButton){
+    ppc94RunTest(Number(testButton.dataset.ppcTest));
+    return;
+  }
+  const chainButton=e.target.closest('[data-ppc-chain]');
+  if(chainButton){
+    ppc94StartChainShowcase(Number(chainButton.dataset.ppcChain));
+    return;
+  }
+  const action=e.target.closest('[data-ppc-action]')?.dataset.ppcAction;
+  if(action==='runAll') ppc94RunAll();
+  else if(action==='copyReport') ppc94CopyReport();
+  else if(action==='chainStep'){
+    if(!ppc94ChainOverlay.classList.contains('show')){
+      ppc94ShowcaseTarget=30;ppc94ShowcaseDepth=1;ppc94ShowcasePaused=true;
+    }else ppc94ShowcasePaused=true;
+    ppc94ShowcaseIncrement();
+  }else if(action==='chainStop') ppc94StopShowcase(true);
+});
+
+ppcLabMenuBtn?.addEventListener('click',()=>{
+  debugPanel.classList.add('show');
+  document.getElementById('ppc94Lab')?.scrollIntoView({block:'nearest'});
+});
+
+ppc94ChainPauseBtn?.addEventListener('click',()=>{
+  ppc94ShowcasePaused=!ppc94ShowcasePaused;
+  ppc94RenderShowcase();
+});
+ppc94ChainNextBtn?.addEventListener('click',()=>{
+  ppc94ShowcasePaused=true;
+  ppc94ShowcaseIncrement();
+});
+ppc94ChainCloseBtn?.addEventListener('click',()=>ppc94StopShowcase(true));
+
+window.__ppc94={
+  version:PPC94_VERSION,
+  tests:PPC94_TESTS.map(t=>({id:t.id,name:t.name})),
+  runTest:ppc94RunTest,
+  runAll:ppc94RunAll,
+  report:()=>ppc94BuildReport(),
+  chainStress:ppc94ChainStress,
+  showcase:ppc94StartChainShowcase,
+  stopShowcase:ppc94StopShowcase
+};
+
+console.info('[Panel Puzzle] V0.9.4 PPC Mechanics Test Lab ready',window.__ppc94);
 
 })();
 </script>
