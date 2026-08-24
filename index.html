@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Panel Puzzle V0.9.4.1 — PPC Mechanics Test Lab</title>
+<title>Panel Puzzle V0.9.5 — Visual Mechanics QA</title>
 <style>
 :root{
   --bg:#0c0c0d;
@@ -725,7 +725,7 @@ body.battle-view .battle-debug.qa-open{display:block}
 .battle-debug{z-index:75!important}
 
 /* ============================================================
-   V0.9.4.1 // PPC MECHANICS TEST LAB
+   V0.9.5 // PPC VISUAL MECHANICS QA
    ============================================================ */
 .debug{
   width:min(570px,calc(100vw - 28px));
@@ -840,13 +840,43 @@ body.battle-view .battle-debug.qa-open{display:block}
   .ppc94-main-actions{grid-template-columns:1fr}
 }
 
+
+/* ============================================================
+   V0.9.5 // VISUAL MECHANICS QA WATCH HUD
+   ============================================================ */
+.ppc95-watch-hud{
+  position:fixed;z-index:155;left:50%;top:max(7px,env(safe-area-inset-top));
+  transform:translateX(-50%);width:min(560px,calc(100vw - 12px));
+  display:none;padding:9px 10px;border-radius:12px;
+  background:rgba(5,12,14,.92);border:1px solid rgba(99,246,255,.34);
+  box-shadow:0 12px 38px rgba(0,0,0,.58);backdrop-filter:blur(6px)
+}
+.ppc95-watch-hud.show{display:block}
+.ppc95-watch-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.ppc95-watch-top b{display:block;font-size:11px;letter-spacing:.08em;color:#efffff}
+.ppc95-watch-top span{display:block;margin-top:2px;color:#8ea6a2;font:800 8px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace}
+.ppc95-watch-top strong{padding:4px 7px;border-radius:999px;color:#fff1bf;background:#332d19;border:1px solid rgba(255,224,104,.28);font-size:9px}
+.ppc95-watch-top strong.pass{color:#eaffc8;background:#172619;border-color:rgba(198,255,95,.48)}
+.ppc95-watch-top strong.fail{color:#ffd4d4;background:#2a181b;border-color:rgba(255,93,93,.52)}
+.ppc95-watch-message{margin-top:6px;color:#d6e5e2;font:800 9px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
+.ppc95-watch-actions{display:flex;gap:5px;margin-top:7px}
+.ppc95-watch-actions button{flex:1;min-height:28px;padding:5px 7px;border-radius:7px;background:#172326;color:#efffff;border:1px solid rgba(255,255,255,.12);font-size:9px}
+.ppc95-impact-flash{pointer-events:none}
+body.ppc95-watch-mode .touch-hud{display:none!important}
+body.ppc95-watch-mode #arcadeShell{outline:1px solid rgba(198,255,95,.16)}
+@media(max-width:520px){
+  .ppc95-watch-hud{top:max(4px,env(safe-area-inset-top));padding:7px 8px}
+  .ppc95-watch-message{font-size:8px}
+  .ppc95-watch-actions button{font-size:8px;padding:4px}
+}
+
 </style>
 </head>
 <body>
 <main class="app">
   <header class="topbar">
     <div>
-      <h1>PANEL PUZZLE V0.9.4.1</h1>
+      <h1>PANEL PUZZLE V0.9.5</h1>
       <div class="subtitle">BATTLE SANDBOX · AI + Versus + Garbage Exchange</div>
     </div>
 
@@ -885,7 +915,7 @@ body.battle-view .battle-debug.qa-open{display:block}
     <div class="layer show" id="menuLayer">
       <div class="menu-card">
         <h2>ELSEWHERE // PLAYGROUND</h2>
-        <p class="eyebrow">V0.9.4.1 · PPC CORE + MECHANICS TEST LAB</p>
+        <p class="eyebrow">V0.9.5 · PPC CORE + VISUAL MECHANICS QA</p>
 
         <div class="mode-grid">
           <button class="mode-btn active" data-mode="endless">ENDLESS</button>
@@ -1110,7 +1140,7 @@ body.battle-view .battle-debug.qa-open{display:block}
   </section>
 
   <section class="garbage-lab" id="garbageLab">
-    <h3>GARBAGE LAB // V0.9.4.1</h3>
+    <h3>GARBAGE LAB // V0.9.5</h3>
     <p>Simula attacchi VS senza nemico. I garbage entrano dalla coda, cadono come oggetti rigidi e reagiscono ai match adiacenti.</p>
 
     <div class="lab-row" aria-label="Garbage type">
@@ -1148,7 +1178,7 @@ body.battle-view .battle-debug.qa-open{display:block}
   </section>
 
   <div class="version">
-    F2 apre il PPC Mechanics Test Lab. V0.9.4.1: PPC core attivo · automatic regression suite · chain stress.
+    F2 apre il PPC Visual QA Lab. V0.9.5: auto regression + WATCH sulla board reale + real chain stress.
   </div>
 </main>
 
@@ -1172,44 +1202,45 @@ body.battle-view .battle-debug.qa-open{display:block}
     <div class="ppc94-lab-head">
       <div>
         <h4>PPC MECHANICS TEST LAB</h4>
-        <span>V0.9.4.1 // deterministic regression harness</span>
+        <span>V0.9.5 // AUTO CORE + WATCH MODE</span>
       </div>
       <span class="ppc94-gate" id="ppc94Gate">GATE —</span>
     </div>
 
     <p class="ppc94-note">
-      Questi test costruiscono situazioni limite automaticamente. Non serve giocarli:
-      premi un test e leggi PASS/FAIL. RUN ALL è il gate meccanico verso V1.0.
+      Tocca un test numerato per VEDERLO sulla board reale. RUN ALL esegue invece la suite headless PASS/FAIL.
+      Il gate V1.0 richiede entrambi: core automatico sano + verifica visuale.
     </p>
 
     <div class="ppc94-test-grid">
-      <button data-ppc-test="1">01 HOVER BASIC</button>
-      <button data-ppc-test="2">02 HOVER SWAP LOCK</button>
-      <button data-ppc-test="3">03 1 CELL / TICK FALL</button>
-      <button data-ppc-test="4">04 LAND → MATCH</button>
-      <button data-ppc-test="5">05 LAST-FRAME SWAP</button>
-      <button data-ppc-test="6">06 CHAIN LINEAGE</button>
-      <button data-ppc-test="7">07 LINEAGE EXPIRES</button>
-      <button data-ppc-test="8">08 ATOMIC CLEAR</button>
-      <button data-ppc-test="9">09 CLEAR + REMOTE FALL</button>
-      <button data-ppc-test="10">10 CLEAR + REMOTE SWAP</button>
-      <button data-ppc-test="11">11 GARBAGE + GRAVITY</button>
-      <button data-ppc-test="12">12 GARBAGE CONVERSION</button>
-      <button data-ppc-test="13">13 TOP-OUT RESET</button>
-      <button data-ppc-test="14">14 TOP-OUT FREEZE</button>
-      <button data-ppc-test="15">15 TOP-OUT DEATH</button>
-      <button data-ppc-test="16">16 COMBO vs CHAIN</button>
-      <button data-ppc-test="17">17 BATTLE TORTURE</button>
+      <button data-ppc-test="1">WATCH · 01 HOVER BASIC</button>
+      <button data-ppc-test="2">WATCH · 02 HOVER SWAP LOCK</button>
+      <button data-ppc-test="3">WATCH · 03 1 CELL / TICK FALL</button>
+      <button data-ppc-test="4">WATCH · 04 LAND → MATCH</button>
+      <button data-ppc-test="5">WATCH · 05 LAST-FRAME SWAP</button>
+      <button data-ppc-test="6">WATCH · 06 CHAIN LINEAGE</button>
+      <button data-ppc-test="7">WATCH · 07 LINEAGE EXPIRES</button>
+      <button data-ppc-test="8">WATCH · 08 ATOMIC CLEAR</button>
+      <button data-ppc-test="9">WATCH · 09 CLEAR + REMOTE FALL</button>
+      <button data-ppc-test="10">WATCH · 10 CLEAR + REMOTE SWAP</button>
+      <button data-ppc-test="11">WATCH · 11 GARBAGE + GRAVITY</button>
+      <button data-ppc-test="12">WATCH · 12 GARBAGE CONVERSION</button>
+      <button data-ppc-test="13">WATCH · 13 TOP-OUT RESET</button>
+      <button data-ppc-test="14">WATCH · 14 TOP-OUT FREEZE</button>
+      <button data-ppc-test="15">WATCH · 15 TOP-OUT DEATH</button>
+      <button data-ppc-test="16">WATCH · 16 COMBO vs CHAIN</button>
+      <button data-ppc-test="17">WATCH · 17 BATTLE TORTURE</button>
+      <button data-ppc-test="18">WATCH · 18 LANDING FEEDBACK</button>
     </div>
 
     <div class="ppc94-main-actions">
-      <button data-ppc-action="runAll">RUN ALL 17 TESTS</button>
+      <button data-ppc-action="runAll">RUN ALL 18 AUTO TESTS</button>
       <button data-ppc-action="copyReport">COPY TEST REPORT</button>
     </div>
 
     <div class="ppc94-chain-box">
       <b>CHAIN SHOWCASE / STRESS</b>
-      <span>Visualizza contatori oltre x9 e verifica che depth/UI non collassino.</span>
+      <span>Showcase sulla board reale: ogni link usa gravity → landing → match → clear. Il debug reinietta solo il setup del link successivo.</span>
       <div class="ppc94-chain-actions">
         <button data-ppc-chain="10">CHAIN x10</button>
         <button data-ppc-chain="15">CHAIN x15</button>
@@ -1218,17 +1249,34 @@ body.battle-view .battle-debug.qa-open{display:block}
         <button data-ppc-action="chainStep">STEP +1</button>
         <button data-ppc-action="chainStop">STOP</button>
       </div>
-      <div class="ppc94-chain-result" id="ppc94ChainResult">CHAIN STRESS — not run</div>
+      <div class="ppc94-chain-result" id="ppc94ChainResult">REAL CHAIN SHOWCASE — not run</div>
     </div>
 
-    <pre class="ppc94-status" id="ppc94TestStatus">PPC V0.9.4.1 QA ready.
+    <pre class="ppc94-status" id="ppc94TestStatus">PPC V0.9.5 QA ready.
 Run a single test or RUN ALL.</pre>
   </section>
 </aside>
 
+
+<div class="ppc95-watch-hud" id="ppc95WatchHud" aria-hidden="true">
+  <div class="ppc95-watch-top">
+    <div>
+      <b id="ppc95WatchTitle">WATCH TEST</b>
+      <span id="ppc95WatchSubtitle">real board diagnostic</span>
+    </div>
+    <strong id="ppc95WatchVerdict">RUNNING</strong>
+  </div>
+  <div class="ppc95-watch-message" id="ppc95WatchMessage">Preparing scenario…</div>
+  <div class="ppc95-watch-actions">
+    <button id="ppc95WatchSpeed" type="button">SPEED 0.5×</button>
+    <button id="ppc95WatchReplay" type="button">REPLAY</button>
+    <button id="ppc95WatchBack" type="button">BACK TO LAB</button>
+  </div>
+</div>
+
 <div class="ppc94-chain-overlay" id="ppc94ChainOverlay" aria-hidden="true">
   <div class="ppc94-chain-card">
-    <div class="ppc94-chain-kicker">CHAIN SHOWCASE // SYNTHETIC UI + DEPTH STRESS</div>
+    <div class="ppc94-chain-kicker">CHAIN SHOWCASE // LEGACY OVERLAY (superseded by V0.9.5 board watch)</div>
     <div class="ppc94-chain-big" id="ppc94ChainBig">CHAIN x2</div>
     <div class="ppc94-chain-small" id="ppc94ChainSmall">target x10</div>
     <div class="ppc94-chain-progress"><i id="ppc94ChainProgress"></i></div>
@@ -4194,7 +4242,7 @@ async function copyQaSnapshot(){
   if(!s) return;
 
   const payload={
-    version:'0.9.4.1',
+    version:'0.9.5',
     timestamp:new Date().toISOString(),
     player:s.player.debugSnapshot(),
     enemy:s.enemy.debugSnapshot(),
@@ -8620,7 +8668,7 @@ window.__battleDebug={
 };
 
 window.__v085Debug={
-  version:'0.9.4.1',
+  version:'0.9.5',
   touchState:()=>touchDrag ? {...touchDrag} : null,
   ppcReference:()=>({...PPC_MECHANICS_REFERENCE}),
   arcadeLockSnapshot:()=>{
@@ -8639,7 +8687,7 @@ window.__v085Debug={
       }
     }
     return {
-      version:'0.9.4.1',
+      version:'0.9.5',
       swapping:!!swapping,
       clearGroups:clearGroups.length,
       fallAnim:fallAnim.length,
@@ -8715,7 +8763,7 @@ updateGarbageLabStatus();
 showMenu();
 requestAnimationFrame(loop);
 /* ============================================================
-   PANEL PUZZLE V0.9.4.1 — PPC CORE MECHANICS KERNEL
+   PANEL PUZZLE V0.9.5 — PPC CORE MECHANICS KERNEL
    Integrated mechanics kernel carried forward from the validated V0.9.3 pass.
    ROM-derived core rules:
    - panel-local hover/fall state
@@ -8730,7 +8778,7 @@ requestAnimationFrame(loop);
    ============================================================ */
 
 const PPC93_RUNTIME_PATCH = true;
-const PPC93_VERSION = '0.9.4.1';
+const PPC93_VERSION = '0.9.5';
 const PPC93_FRAME_MS = 1000 / 59.7275;
 const PPC93_HOVER_TICKS = [14,13,12,11,10,9,8,8,7,7];
 const PPC93_POP_TICKS = [9,9,8,8,8,8,8,7,7,7];
@@ -8945,7 +8993,7 @@ function ppc93ArcadeUnsupportedSegments(){
   return out;
 }
 
-// V0.9.4.1 HOTFIX: Arcade non dichiara un simbolo globale fallingSegments.
+// V0.9.5 INTEGRATED FIX: Arcade non dichiara un simbolo globale fallingSegments.
 // Il kernel PPC usa direttamente ppc93ArcadeUnsupportedSegments().
 
 updatePanelTimers = function(dt){
@@ -9892,14 +9940,14 @@ window.__ppc93 = {
   })
 };
 
-console.info('[Panel Puzzle] V0.9.4.1 PPC Core + Mechanics Test Lab active',window.__ppc93);
+console.info('[Panel Puzzle] V0.9.5 PPC Core Mechanics Kernel active',window.__ppc93);
 
 
 // ============================================================
-// V0.9.4.1 // PPC MECHANICS TEST LAB
+// V0.9.5 // PPC VISUAL MECHANICS QA
 // Deterministic tests target the patched PPC kernel directly.
 // ============================================================
-const PPC94_VERSION='0.9.4.1';
+const PPC94_VERSION='0.9.5';
 const ppc94Results=new Map();
 let ppc94LastReport='';
 let ppc94ShowcaseTimer=null;
@@ -10318,7 +10366,7 @@ function ppc94RenderReport(focus=null){
   const report=ppc94BuildReport();
   const s=report.summary;
   if(ppc94Gate){
-    ppc94Gate.textContent=s.gate?'V1.0 GATE READY':(s.run===17?`GATE FAIL ${s.fail}`:`GATE ${s.run}/17`);
+    ppc94Gate.textContent=s.gate?'V1.0 GATE READY':(s.run===PPC94_TESTS.length?`GATE FAIL ${s.fail}`:`GATE ${s.run}/17`);
     ppc94Gate.classList.toggle('pass',s.gate);
     ppc94Gate.classList.toggle('fail',s.run===17&&!s.gate);
   }
@@ -10504,7 +10552,428 @@ window.__ppc94={
   stopShowcase:ppc94StopShowcase
 };
 
-console.info('[Panel Puzzle] V0.9.4.1 PPC Mechanics Test Lab ready',window.__ppc94);
+console.info('[Panel Puzzle] V0.9.5 Visual Mechanics QA ready',window.__ppc94);
+
+
+// ============================================================
+// V0.9.5 // VISUAL MECHANICS QA
+// Numbered tests = WATCH on the real board. RUN ALL remains headless.
+// ============================================================
+const PPC95_VERSION='0.9.5';
+const ppc95Metrics={sparkBursts:0,landSoundCalls:0,lastImpact:null};
+let ppc95ImpactFlashes=[];
+let ppc95Watch=null;
+let ppc95LastWatchId=1;
+
+const ppc95WatchHud=document.getElementById('ppc95WatchHud');
+const ppc95WatchTitle=document.getElementById('ppc95WatchTitle');
+const ppc95WatchSubtitle=document.getElementById('ppc95WatchSubtitle');
+const ppc95WatchVerdict=document.getElementById('ppc95WatchVerdict');
+const ppc95WatchMessage=document.getElementById('ppc95WatchMessage');
+const ppc95WatchSpeed=document.getElementById('ppc95WatchSpeed');
+const ppc95WatchReplay=document.getElementById('ppc95WatchReplay');
+const ppc95WatchBack=document.getElementById('ppc95WatchBack');
+
+// --- Landing feedback regression instrumentation + a tiny persistent contact glint.
+const ppc95BaseEmitLandingSparks=emitLandingSparks;
+emitLandingSparks=function(x,y){
+  ppc95Metrics.sparkBursts++;
+  ppc95Metrics.lastImpact={x,y,at:performance.now()};
+  ppc95BaseEmitLandingSparks(x,y);
+  // Preserve the old sparks, but make the contact point readable with PPC's instantaneous cell fall.
+  ppc95ImpactFlashes.push({x,y,life:185,maxLife:185});
+};
+
+const ppc95BaseSoundLand=soundLand;
+soundLand=function(gainScale=1){
+  ppc95Metrics.landSoundCalls++;
+  // Same landing voice, only restored slightly in the mix after the PPC timing pass.
+  return ppc95BaseSoundLand(gainScale*1.18);
+};
+
+const ppc95BaseUpdateJuice=updateJuice;
+updateJuice=function(dt){
+  ppc95BaseUpdateJuice(dt);
+  for(const f of ppc95ImpactFlashes) f.life-=dt;
+  ppc95ImpactFlashes=ppc95ImpactFlashes.filter(f=>f.life>0);
+};
+
+const ppc95BaseRenderLandingSparks=renderLandingSparks;
+renderLandingSparks=function(){
+  ppc95BaseRenderLandingSparks();
+  ctx.save();
+  ctx.lineCap='round';
+  for(const f of ppc95ImpactFlashes){
+    const a=clamp(f.life/f.maxLife,0,1);
+    const p=1-a;
+    const radius=2+p*9;
+    ctx.globalAlpha=a*.85;
+    ctx.strokeStyle='#ffffff';
+    ctx.lineWidth=1;
+    for(let i=0;i<4;i++){
+      const ang=Math.PI/4+i*Math.PI/2;
+      ctx.beginPath();
+      ctx.moveTo(f.x+Math.cos(ang)*2,f.y+Math.sin(ang)*2);
+      ctx.lineTo(f.x+Math.cos(ang)*radius,f.y+Math.sin(ang)*radius);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+};
+
+// Battle: retain soundLand through onEvent and restore the missing visual contact sparks.
+if(typeof BattlePuzzleEngine==='function' && typeof BattleRenderer==='function'){
+  const BP95=BattlePuzzleEngine.prototype;
+  const BR95=BattleRenderer.prototype;
+  const baseReset95=BP95.reset;
+  const baseGravity95=BP95.doGravityStep;
+  const baseFx95=BP95.updateFx;
+  const baseRender95=BR95.render;
+
+  BP95.reset=function(){
+    baseReset95.call(this);
+    this.ppc95LandingSparks=[];
+  };
+  BP95.doGravityStep=function(){
+    const before=new Set();
+    for(const row of this.grid) for(const p of row) if(p?.squashMs>60) before.add(p.id);
+    const moved=baseGravity95.call(this);
+    if(!this.ppc95LandingSparks) this.ppc95LandingSparks=[];
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+      const p=this.grid[r][c];
+      if(!p || before.has(p.id) || !(p.squashMs>60)) continue;
+      const count=1+Math.floor(Math.random()*3);
+      for(let i=0;i<count;i++){
+        const life=150+Math.random()*70;
+        this.ppc95LandingSparks.push({
+          x:c*TILE+TILE/2+(Math.random()*10-5),
+          y:(r-FIRST_VISIBLE_ROW)*TILE-this.riseOffset+TILE-3,
+          vx:(Math.random()<.5?-1:1)*(34+Math.random()*58),
+          vy:-(18+Math.random()*42),life,maxLife:life
+        });
+      }
+    }
+    return moved;
+  };
+  BP95.updateFx=function(dt){
+    baseFx95.call(this,dt);
+    const s=dt/1000;
+    if(!this.ppc95LandingSparks) this.ppc95LandingSparks=[];
+    for(const p of this.ppc95LandingSparks){
+      p.life-=dt;p.x+=p.vx*s;p.y+=p.vy*s;p.vy+=150*s;p.vx*=.97;
+    }
+    this.ppc95LandingSparks=this.ppc95LandingSparks.filter(p=>p.life>0);
+  };
+  BR95.render=function(){
+    baseRender95.call(this);
+    const c=this.ctx;
+    c.save();c.lineCap='round';c.strokeStyle='#fff';c.lineWidth=1;
+    for(const p of this.engine.ppc95LandingSparks||[]){
+      const a=clamp(p.life/p.maxLife,0,1),mag=Math.max(1,Math.hypot(p.vx,p.vy));
+      c.globalAlpha=a*.9;c.beginPath();c.moveTo(p.x,p.y);
+      c.lineTo(p.x-(p.vx/mag)*5,p.y-(p.vy/mag)*5);c.stroke();
+    }
+    c.restore();
+  };
+}
+
+function ppc95P(type=0,tag=0){
+  const p=makePanel(type);ppc93NormalizePanel(p);p.chainTag=tag;p.settleMs=0;return p;
+}
+function ppc95SafeRow(row,offset=0){
+  for(let c=0;c<COLS;c++) grid[row][c]=ppc95P((c+offset)%5,0);
+}
+function ppc95Find(id){
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]?.id===id) return {r,c,p:grid[r][c]};
+  return null;
+}
+function ppc95BeginWatchBoard(level=10){
+  if(battleSession?.active) exitBattleView();
+  document.body.classList.add('gameplay-active','ppc95-watch-mode');
+  syncGameplayViewport();
+  menuLayer.classList.remove('show');pauseLayer.classList.remove('show');overlayEl.classList.remove('show');countdownEl.classList.remove('show');
+  debugPanel.classList.remove('show');
+  runPhase='playing';paused=false;gameOver=false;fastRise=false;fastRiseHoldMs=0;
+  gameMode.activeMode='endless';gameMode.timeExpired=true;gameMode.awaitingResolution=false;
+  startLevel=level;currentLevel=level;
+  reset();
+  gameMode.activeMode='endless';gameMode.timeExpired=true;runPhase='playing';paused=false;gameOver=false;
+  clearForDebug();
+  ppc93NormalizeArcadeGrid();
+  runStats={panelsCleared:0,maxChain:1,maxCombo:3,generations:0};
+  score=0;chainEvent=newChainEvent();waveQuietByTag=new Map();
+  updateUI();updateModeUI();
+  ensureAudio();
+}
+function ppc95Hud(title,subtitle,msg){
+  ppc95WatchHud.classList.add('show');ppc95WatchHud.setAttribute('aria-hidden','false');
+  ppc95WatchTitle.textContent=title;ppc95WatchSubtitle.textContent=subtitle||'real board diagnostic';
+  ppc95WatchMessage.textContent=msg||'Running…';
+  ppc95WatchVerdict.textContent='RUNNING';ppc95WatchVerdict.className='';
+  ppc95SyncSpeedButton();
+}
+function ppc95Msg(msg){if(ppc95WatchMessage) ppc95WatchMessage.textContent=msg;}
+function ppc95Pass(msg='Observed expected behavior.'){
+  if(!ppc95Watch||ppc95Watch.finished) return;
+  ppc95Watch.finished=true;ppc95Watch.ok=true;ppc95Watch.result=msg;
+  ppc95WatchVerdict.textContent='PASS';ppc95WatchVerdict.className='pass';ppc95Msg(msg+'\nYou can REPLAY or return to the Lab.');
+}
+function ppc95Fail(msg='Unexpected behavior.'){
+  if(!ppc95Watch||ppc95Watch.finished) return;
+  ppc95Watch.finished=true;ppc95Watch.ok=false;ppc95Watch.result=msg;
+  ppc95WatchVerdict.textContent='FAIL';ppc95WatchVerdict.className='fail';ppc95Msg(msg+'\nUse REPLAY or copy the Auto report.');
+}
+function ppc95SyncSpeedButton(){
+  if(ppc95WatchSpeed&&ppc95Watch) ppc95WatchSpeed.textContent=`SPEED ${ppc95Watch.speed.toFixed(2).replace(/\.00$/,'')}×`;
+}
+function ppc95ScenarioBase(id,name,subtitle,speed=.5){return {id,name,subtitle,speed,elapsed:0,realElapsed:0,stage:0,finished:false,ok:null,data:{}};}
+
+function ppc95StartArcadeSwap(r,c){
+  if(swapping || c<0 || c>=COLS-1 || r<FIRST_VISIBLE_ROW || r>=ROWS) return false;
+  if(!canSwapCell(r,c) || !canSwapCell(r,c+1)) return false;
+  const left=grid[r][c],right=grid[r][c+1];
+  if(!left&&!right) return false;
+  swapping={r,c,left,right,elapsed:0,durationMs:difficultyConfig().swapMs};
+  ppc93ArcadeApplyLogicalSwap(swapping);
+  if(typeof soundSwap==='function') soundSwap();
+  return true;
+}
+
+function ppc95SetupInitialClear({withAbove=false,remoteFall=false,remoteSwap=false}={}){
+  ppc95SafeRow(ROWS-1,0);ppc95SafeRow(ROWS-2,1);
+  const r=ROWS-3,t=0;
+  for(let c=0;c<3;c++) grid[r][c]=ppc95P(t);
+  if(withAbove) grid[r-1][1]=ppc95P(4);
+  if(remoteFall){
+    grid[ROWS-2][5]=null;
+    const p=ppc95P(3);grid[ROWS-6][5]=p;return {fallId:p.id,r};
+  }
+  if(remoteSwap){
+    grid[r][4]=ppc95P(2);grid[r][5]=ppc95P(3);return {r};
+  }
+  return {r};
+}
+
+const PPC95_WATCH_SCENARIOS={
+  1:{name:'01 HOVER BASIC',subtitle:'support loss → local hover → fall',speed:.35,setup(w){
+      ppc95SafeRow(ROWS-1);const p=ppc95P(1);grid[ROWS-5][2]=p;w.data.id=p.id;w.data.start=ROWS-5;
+      ppc95Msg('The panel should hang briefly before it starts falling.');
+    },tick(w){const q=ppc95Find(w.data.id);if(!q)return; if(q.p.hoverMs!==null&&q.p.hoverMs>0)w.data.sawHover=true; if(q.r>w.data.start)w.data.sawFall=true; if(w.data.sawHover&&w.data.sawFall&&q.p.hoverMs===null)ppc95Pass('Hover was visible, then gravity released the panel.');}},
+  2:{name:'02 HOVER SWAP LOCK',subtitle:'hover blocks swap; active fall allows it',speed:.28,setup(w){
+      ppc95SafeRow(ROWS-1);const p=ppc95P(2);grid[ROWS-6][2]=p;w.data.id=p.id;ppc95Msg('Watch status: swap must be LOCKED during hover, then ALLOWED during active fall.');
+    },tick(w){const q=ppc95Find(w.data.id);if(!q)return; if(q.p.hoverMs!==null&&!q.p.ppcFallActive){w.data.locked=!canSwapCell(q.r,q.c);ppc95Msg(`HOVER // SWAP ${w.data.locked?'LOCKED ✓':'ALLOWED ✗'}`);} if(q.p.ppcFallActive){w.data.allowed=canSwapCell(q.r,q.c);ppc95Msg(`FALLING // SWAP ${w.data.allowed?'ALLOWED ✓':'LOCKED ✗'}`);} if(w.data.locked&&w.data.allowed)ppc95Pass('Swap lock changed at the hover→fall boundary as expected.');}},
+  3:{name:'03 1 CELL / TICK FALL',subtitle:'PPC discrete gravity',speed:.22,setup(w){
+      ppc95SafeRow(ROWS-1);const p=ppc95P(3);grid[ROWS-8][2]=p;w.data.id=p.id;w.data.last=ROWS-8;w.data.steps=[];ppc95Msg('Slow diagnostic: each physics release moves exactly one logical row.');
+    },tick(w){const q=ppc95Find(w.data.id);if(!q)return;if(q.r!==w.data.last){w.data.steps.push(q.r-w.data.last);w.data.last=q.r;ppc95Msg(`ROWS MOVED: ${w.data.steps.join(', ')}\nEvery entry must be 1.`);}if(q.p.hoverMs===null&&w.data.steps.length>=4){const ok=w.data.steps.every(x=>x===1);ok?ppc95Pass('Observed only +1 row logical gravity steps.'):ppc95Fail('A gravity step skipped more than one row.');}}},
+  4:{name:'04 LAND → MATCH',subtitle:'landing is match-ready immediately',speed:.38,setup(w){
+      const c=2,t=1;grid[ROWS-2][c]=ppc95P(t);grid[ROWS-1][c]=ppc95P(t);const p=ppc95P(t);grid[ROWS-7][c]=p;w.data.id=p.id;ppc95Msg('The falling panel should land on the pair and immediately enter the 3-panel clear.');
+    },tick(w){if(clearGroups.some(g=>g.depth===1&&g.entries.length===3))ppc95Pass('Landing produced the 3-panel match with no artificial land delay.');}},
+  5:{name:'05 LAST-FRAME SWAP',subtitle:'auto swap on the final useful falling row',speed:.25,setup(w){
+      const t=2,c=2;grid[ROWS-2][c]=ppc95P(t);grid[ROWS-1][c]=ppc95P(t);const p=ppc95P(t);grid[ROWS-7][c+1]=p;w.data.id=p.id;w.data.targetRow=ROWS-3;ppc95Msg('AUTO INPUT: the falling panel will be swapped left on its final useful row.');
+    },tick(w){const q=ppc95Find(w.data.id);if(q&&!w.data.swapped&&q.r===w.data.targetRow&&q.c===3){w.data.swapped=ppc95StartArcadeSwap(q.r,2);ppc95Msg(`FINAL ROW R${q.r}: AUTO SWAP ${w.data.swapped?'FIRED ✓':'FAILED ✗'}`);}if(w.data.swapped&&clearGroups.some(g=>g.entries.length===3)){ppc95Pass('Frame-tight swap committed logically and the landing match resolved.');}if(w.realElapsed>9000&&!w.finished)ppc95Fail('The auto last-frame swap did not create the expected match.');}},
+  6:{name:'06 CHAIN LINEAGE',subtitle:'clear removes support → descendant match = x2',speed:.55,setup(w){
+      ppc95SafeRow(ROWS-1,0);ppc95SafeRow(ROWS-2,1);const r=ROWS-3;
+      for(let c=1;c<=3;c++)grid[r][c]=ppc95P(0);grid[r][4]=ppc95P(2);grid[r][5]=ppc95P(2);const child=ppc95P(2);grid[r-1][3]=child;w.data.child=child.id;
+      ppc95Msg('First the three red panels clear. The panel above inherits lineage, falls, and should form CHAIN x2 on the right.');
+    },tick(w){const q=ppc95Find(w.data.child);if(q?.p.chainTag>0)w.data.sawTag=true;if(clearGroups.some(g=>g.depth===2)){w.data.sawX2=true;}if(w.data.sawTag&&w.data.sawX2)ppc95Pass('Causal lineage survived the fall and produced CHAIN x2.');}},
+  7:{name:'07 LINEAGE EXPIRES',subtitle:'causal tag dies after stable non-match landing',speed:.45,setup(w){
+      ppc95SafeRow(ROWS-1,0);ppc95SafeRow(ROWS-2,1);const r=ROWS-3;
+      for(let c=1;c<=3;c++)grid[r][c]=ppc95P(0);grid[r][4]=ppc95P(2);grid[r][5]=ppc95P(3);const child=ppc95P(4);grid[r-1][3]=child;w.data.child=child.id;
+      ppc95Msg('The descendant falls but does NOT match. Its chain lineage must disappear after stabilizing.');
+    },tick(w){const q=ppc95Find(w.data.child);if(q?.p.chainTag>0)w.data.sawTag=true;if(w.data.sawTag&&q&&q.p.hoverMs===null&&!q.p.ppcFallActive&&q.p.chainTag===0)ppc95Pass('Lineage was cleared after a stable non-match landing.');}},
+  8:{name:'08 ATOMIC CLEAR',subtitle:'visual pops sequential; logical support removed together',speed:.45,setup(w){
+      const s=ppc95SetupInitialClear({withAbove:true});w.data.r=s.r;w.data.above=grid[s.r-1][1].id;w.data.startRow=s.r-1;ppc95Msg('Watch the upper panel: it must NOT fall between individual visual pops. It may fall only after the full group is gone.');
+    },tick(w){const q=ppc95Find(w.data.above);if(clearGroups.length){w.data.sawClear=true;if(q&&q.r!==w.data.startRow)w.data.early=true;}else if(w.data.sawClear&&q&&q.r>w.data.startRow){w.data.after=true;}if(w.data.early)ppc95Fail('Upper panel moved before the clear group completed.');else if(w.data.after)ppc95Pass('Sequential pop remained logically atomic; gravity began only after group completion.');}},
+  9:{name:'09 CLEAR + REMOTE FALL',subtitle:'unrelated gravity continues during a clear',speed:.4,setup(w){const s=ppc95SetupInitialClear({remoteFall:true});w.data.id=s.fallId;w.data.start=ROWS-6;ppc95Msg('Left side clears while the unsupported panel on the far right must keep falling.');},tick(w){const q=ppc95Find(w.data.id);if(clearGroups.length&&q&&q.r>w.data.start)w.data.concurrent=true;if(w.data.concurrent)ppc95Pass('Remote gravity progressed while another region was clearing.');}},
+ 10:{name:'10 CLEAR + REMOTE SWAP',subtitle:'unrelated input is not globally frozen',speed:.45,setup(w){const s=ppc95SetupInitialClear({remoteSwap:true});w.data.r=s.r;w.data.a=grid[s.r][4].id;w.data.b=grid[s.r][5].id;ppc95Msg('During the left clear, AUTO INPUT swaps the two far-right panels.');},tick(w){if(clearGroups.length&&!w.data.tried&&w.elapsed>250){w.data.tried=true;w.data.started=ppc95StartArcadeSwap(w.data.r,4);}if(w.data.started&&grid[w.data.r][4]?.id===w.data.b)ppc95Pass('Remote swap committed while the clear was still active.');}},
+ 11:{name:'11 GARBAGE + GRAVITY',subtitle:'conversion does not freeze normal panels',speed:.45,setup(w){
+      ppc95SafeRow(ROWS-1,0);ppc95SafeRow(ROWS-2,1);const g=addGarbageBlock(3,2,'A',{x:0,row:ROWS-4});scheduleGarbageConversion([g.id],1);
+      grid[ROWS-2][5]=null;const p=ppc95P(4);grid[ROWS-7][5]=p;w.data.id=p.id;w.data.start=ROWS-7;ppc95Msg('Garbage converts on the left while the normal panel on the right must fall independently.');
+    },tick(w){const q=ppc95Find(w.data.id);if(garbageConversionJobs.length&&q&&q.r>w.data.start)w.data.concurrent=true;if(w.data.concurrent)ppc95Pass('Normal gravity remained active during garbage conversion.');}},
+ 12:{name:'12 GARBAGE CONVERSION',subtitle:'layer-by-layer release + local post timer',speed:.55,setup(w){
+      ppc95SafeRow(ROWS-1,0);const g=addGarbageBlock(3,2,'A',{x:0,row:ROWS-3});w.data.gid=g.id;w.data.initialH=2;scheduleGarbageConversion([g.id],2);ppc95Msg('The 3×2 garbage should release one row at a time; converted panels briefly carry a local post-garbage timer.');
+    },tick(w){const g=garbageBlockById(w.data.gid);const timers=grid.flat().filter(Boolean).map(p=>p.postGarbageMs||0);if(g&&g.height===1)w.data.sawLayer=true;if(timers.some(v=>v>0))w.data.sawTimer=true;if(w.data.sawLayer&&w.data.sawTimer&&!garbageConversionJobs.length)ppc95Pass('Observed layer release and local post-conversion readiness timer.');}},
+ 13:{name:'13 TOP-OUT RESET',subtitle:'danger counter returns to zero when top clears',speed:1,manualTopOut:true,setup(w){
+      for(let r=0;r<ROWS;r++)grid[r][0]=ppc95P(r%5);w.data.cleared=false;ppc95Msg('Danger accumulates briefly. Then the top cell is removed automatically and the counter must reset to 0.');
+    },tick(w,dt){checkTopOut(dt);if(topOutMs>420&&!w.data.cleared){w.data.cleared=true;grid[0][0]=null;}if(w.data.cleared&&!bufferOccupied()&&topOutMs===0)ppc95Pass('Top row cleared → danger counter reset immediately to 0.');}},
+ 14:{name:'14 TOP-OUT FREEZE',subtitle:'danger time freezes during causal clear activity',speed:.7,manualTopOut:true,setup(w){
+      for(let r=0;r<ROWS;r++)grid[r][0]=ppc95P(r%5);ppc95SafeRow(ROWS-1,1);const r=ROWS-2,cells=[];for(let c=2;c<5;c++){const p=ppc95P(4);grid[r][c]=p;cells.push({r,c,panel:p});}beginClear(cells,1);w.data.start=topOutMs;ppc95Msg('Buffer is occupied while a real clear runs. DANGER must stay frozen until the clear finishes.');
+    },tick(w,dt){const before=topOutMs;checkTopOut(dt);if(clearGroups.length){if(topOutMs!==before)w.data.bad=true;w.data.sawFreeze=true;}else if(w.data.sawFreeze&&topOutMs>before)w.data.resumed=true;if(w.data.bad)ppc95Fail('Danger counter advanced during a clear.');else if(w.data.resumed)ppc95Pass('Danger froze during the clear and resumed afterwards.');}},
+ 15:{name:'15 TOP-OUT DEATH',subtitle:'conditional frame budget reaches GAME OVER',speed:1.25,manualTopOut:true,setup(w){for(let r=0;r<ROWS;r++)grid[r][0]=ppc95P(r%5);ppc95Msg(`Stable top-out. Counter must reach the PPC threshold (${Math.round(difficultyConfig().topOutGraceMs)} ms) and trigger loss.`);},tick(w,dt){checkTopOut(dt);if(gameOver)ppc95Pass('Top-out threshold reached and GAME OVER fired.');}},
+ 16:{name:'16 COMBO vs CHAIN',subtitle:'simultaneous size ≠ causal generation depth',speed:.7,setup(w){
+      ppc95SafeRow(ROWS-1,0);const r=ROWS-2;for(let c=0;c<4;c++)grid[r][c]=ppc95P(1);w.data.phase='combo';ppc95Msg('Phase A: four simultaneous panels = COMBO x4. Phase B will then create a causal CHAIN x2.');
+    },tick(w){if(w.data.phase==='combo'&&clearGroups.some(g=>g.entries.length===4&&g.depth===1)){w.data.combo=true;}if(w.data.combo&&!clearGroups.length&&!boardResolving()&&!w.data.phase2){w.data.phase2=true;grid=emptyGrid();const c=2,t=3;grid[ROWS-2][c]=ppc95P(t);grid[ROWS-1][c]=ppc95P(t);const p=ppc95P(t,1);grid[ROWS-6][c]=p;ppc93NormalizeArcadeGrid();ppc95Msg('Phase B: tagged descendant falls into a trio → CHAIN x2.');}if(w.data.phase2&&clearGroups.some(g=>g.depth===2)){w.data.chain=true;}if(w.data.combo&&w.data.chain)ppc95Pass('Engine distinguished COMBO x4 from causal CHAIN x2.');}},
+ 18:{name:'18 LANDING FEEDBACK',subtitle:'sound + contact sparks + squash regression',speed:.3,setup(w){
+      ppc95SafeRow(ROWS-1,0);const p=ppc95P(2);grid[ROWS-7][2]=p;w.data.id=p.id;w.data.sound0=ppc95Metrics.landSoundCalls;w.data.spark0=ppc95Metrics.sparkBursts;ppc95Msg('Watch/listen at impact: the panel must squash, make the small landing sound, and emit contact sparks.');
+    },tick(w){const q=ppc95Find(w.data.id);const sound=ppc95Metrics.landSoundCalls>w.data.sound0;const spark=ppc95Metrics.sparkBursts>w.data.spark0;const squash=!!q&&q.p.squashMs>0;if(sound)w.data.sound=true;if(spark)w.data.spark=true;if(squash)w.data.squash=true;if(w.data.sound&&w.data.spark&&w.data.squash)ppc95Pass('Landing feedback fired: sound ✓ · sparks ✓ · squash ✓');}}
+};
+
+// Test 17 uses the real Battle engine and both visible boards.
+function ppc95StartBattleWatch(){
+  document.body.classList.add('ppc95-watch-mode');
+  menuLayer.classList.remove('show');debugPanel.classList.remove('show');
+  battleSession=createBattleSession('reactive',15);battleSession.phase='playing';battleSession.countdownMs=0;battleSession.ai.paused=true;enterBattleView();battleCountdown.classList.remove('show');
+  const e=battleSession.player;e.grid=e.emptyGrid();e.garbage=[];e.garbageQueue=[];e.conversion=null;e.clearWave=null;e.swap=null;e.topOutMs=0;e.dead=false;
+  for(let c=0;c<COLS;c++)e.grid[ROWS-1][c]=e.panel(c%5);
+  const g={id:e.garbageId++,x:0,row:ROWS-4,w:2,h:2,type:'A'};e.garbage=[g];e.startGarbageConversion([g.id],1);
+  const p=e.panel(4);p.hoverMs=null;e.grid[ROWS-7][5]=p;ppc93NormalizePanel(p);
+  e.grid[ROWS-2][3]=e.panel(1);e.grid[ROWS-2][4]=e.panel(2);e.startSwap(ROWS-2,3);e.queueGarbage({w:3,h:1,type:'B',source:'QA'});
+  ppc95Watch.data={engine:e,panelId:p.id,conversionStarted:true,swapStarted:true,queueStarted:true,invariants:true};
+  ppc95Msg('TORTURE: conversion + normal fall + remote swap + incoming garbage are active together. Both boards remain live.');
+}
+
+function ppc95StartWatch(id){
+  id=Number(id);ppc95StopWatch(false);ppc95LastWatchId=id;
+  if(id===17){
+    ppc95Watch=ppc95ScenarioBase(17,'17 BATTLE CONCURRENCY TORTURE','real Battle engine concurrency',.7);
+    ppc95Hud(ppc95Watch.name,ppc95Watch.subtitle,'Preparing Battle torture…');ppc95StartBattleWatch();return;
+  }
+  const sc=PPC95_WATCH_SCENARIOS[id];if(!sc)return;
+  ppc95Watch=ppc95ScenarioBase(id,sc.name,sc.subtitle,sc.speed||.5);ppc95Hud(sc.name,sc.subtitle,'Preparing…');
+  ppc95BeginWatchBoard(id===15?10:10);sc.setup(ppc95Watch);
+}
+
+function ppc95StopWatch(reopenLab=true){
+  if(!ppc95Watch&&!document.body.classList.contains('ppc95-watch-mode'))return;
+  ppc95Watch=null;document.body.classList.remove('ppc95-watch-mode');ppc95WatchHud?.classList.remove('show');ppc95WatchHud?.setAttribute('aria-hidden','true');
+  if(battleSession?.active)exitBattleView();
+  showMenu();
+  if(reopenLab){debugPanel.classList.add('show');document.getElementById('ppc94Lab')?.scrollIntoView({block:'nearest'});}
+}
+
+const ppc95BaseUpdate=update;
+update=function(dt){
+  const w=ppc95Watch;
+  if(!w||w.id===17){return ppc95BaseUpdate(dt);}
+  const simDt=dt*w.speed;w.elapsed+=simDt;w.realElapsed+=dt;
+  ppc95BaseUpdate(simDt);
+  const sc=PPC95_WATCH_SCENARIOS[w.id];
+  if(sc&&!w.finished){try{sc.tick(w,simDt);}catch(err){console.error(err);ppc95Fail(String(err));}}
+};
+
+const ppc95BaseUpdateBattle=updateBattle;
+updateBattle=function(dt){
+  const w=ppc95Watch;
+  if(!w||w.id!==17)return ppc95BaseUpdateBattle(dt);
+  const simDt=dt*w.speed;w.elapsed+=simDt;w.realElapsed+=dt;
+  ppc95BaseUpdateBattle(simDt);
+  if(w.finished)return;
+  const e=w.data.engine;
+  try{
+    const inv=e.assertInvariants();if(!inv.ok){w.data.invariants=false;ppc95Fail('Battle invariant failure: '+inv.errors.join('; '));return;}
+    const pos=(()=>{for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(e.grid[r][c]?.id===w.data.panelId)return {r,c,p:e.grid[r][c]};return null;})();
+    if(pos?.p.squashMs>0)w.data.landed=true;
+    if(!e.swap)w.data.swapDone=true;
+    if(!e.conversion)w.data.conversionDone=true;
+    if(e.garbage.length||e.garbageQueue.length===0)w.data.queueProgress=true;
+    if(w.realElapsed>4200&&w.data.invariants&&w.data.swapDone&&w.data.conversionDone&&w.data.landed){
+      ppc95Pass('Battle concurrency survived: conversion ✓ · normal landing ✓ · swap ✓ · invariants ✓');
+    }
+  }catch(err){ppc95Fail(String(err?.stack||err));}
+};
+
+// During the debug-assisted long-chain showcase, keep the chain event open between injected links.
+const ppc95BaseUpdateChainEvent=updateChainEvent;
+updateChainEvent=function(dt){
+  if(ppc95Watch?.kind==='realChain'){
+    if(eventResultDisplayMs>0)eventResultDisplayMs=Math.max(0,eventResultDisplayMs-dt);
+    ppc93ArcadeExpireStableLineage();
+    return;
+  }
+  return ppc95BaseUpdateChainEvent(dt);
+};
+
+function ppc95InjectChainLink(depth){
+  grid=emptyGrid();swapping=null;clearGroups=[];fallAnim=[];garbageBlocks=[];garbageFallAnims=[];garbageQueue=[];garbageConversionJobs=[];waveQuietByTag=new Map();fallAccumulator=0;
+  const c=2,t=(depth+1)%5;
+  grid[ROWS-2][c]=ppc95P(t);grid[ROWS-1][c]=ppc95P(t);
+  const falling=ppc95P(t,Math.max(1,depth-1));grid[ROWS-7][c]=falling;
+  ppc93NormalizeArcadeGrid();
+  ppc95Watch.data.linkId=falling.id;ppc95Watch.data.injectedDepth=depth;ppc95Watch.data.clearSeen=false;ppc95Watch.data.wait=0;
+  ppc95Msg(`REAL CHAIN SHOWCASE // preparing x${depth} of x${ppc95Watch.data.target}\nActual path: hover → fall → landing → match resolver → clear.`);
+}
+function ppc95StartRealChain(target){
+  target=Math.max(2,Number(target)||10);ppc95StopWatch(false);
+  ppc95Watch=ppc95ScenarioBase(100+target,`REAL CHAIN x${target}`,'debug-assisted real board cascade',target>=20?1.5:1.0);
+  ppc95Watch.kind='realChain';ppc95Watch.data={target,current:2,completed:1,linkId:null,clearSeen:false,wait:0};
+  ppc95Hud(`REAL CHAIN SHOWCASE x${target}`,'every link uses the real board engine','Preparing x2…');ppc95BeginWatchBoard(10);
+  ensureChainEvent();chainEvent.maxChain=1;ppc95InjectChainLink(2);
+}
+
+// Extend arcade driver for the real-chain showcase.
+const ppc95WatchUpdateWithChain=update;
+update=function(dt){
+  const w=ppc95Watch;
+  if(!w||w.kind!=='realChain')return ppc95WatchUpdateWithChain(dt);
+  const simDt=dt*w.speed;w.elapsed+=simDt;w.realElapsed+=dt;ppc95BaseUpdate(simDt);
+  const depth=w.data.current;
+  if(clearGroups.some(g=>g.depth===depth)){w.data.clearSeen=true;ppc95Msg(`CHAIN x${depth} // CLEAR ACTIVE\nNext link will be injected only after this real clear completes.`);}
+  if(w.data.clearSeen&&!clearGroups.length&&!boardResolving()){
+    w.data.wait+=simDt;
+    if(w.data.wait>180){
+      w.data.completed=depth;
+      if(depth>=w.data.target){
+        runStats.maxChain=Math.max(runStats.maxChain,depth);chainDisplay=depth;chainDisplayMs=999999;updateUI();
+        if(ppc94ChainResult)ppc94ChainResult.textContent=`REAL CHAIN x${w.data.target} // PASS · board engine reached x${depth}`;
+        ppc95Pass(`REAL BOARD CHAIN reached x${depth}. Every link passed through gravity, landing, match and clear.`);return;
+      }
+      w.data.current++;ppc95InjectChainLink(w.data.current);
+    }
+  }
+  if(w.realElapsed>90000&&!w.finished)ppc95Fail('Real chain showcase timed out before target depth.');
+};
+
+// Automatic Test 18: run an actual Arcade landing step while preserving live state.
+function ppc95AutoLandingFeedbackTest(){
+  const saved={grid,clearGroups,garbageBlocks,garbageFallAnims,garbageQueue,garbageConversionJobs,swapping,fallAnim,fallAccumulator,waveQuietByTag,landingSparks,flashes:ppc95ImpactFlashes,audioEnabled};
+  const s0=ppc95Metrics.sparkBursts,l0=ppc95Metrics.landSoundCalls;
+  try{
+    grid=emptyGrid();clearGroups=[];garbageBlocks=[];garbageFallAnims=[];garbageQueue=[];garbageConversionJobs=[];swapping=null;fallAnim=[];fallAccumulator=0;waveQuietByTag=new Map();landingSparks=[];ppc95ImpactFlashes=[];
+    audioEnabled=false;
+    const p=ppc95P(2);p.hoverMs=0;p.ppcFallActive=true;grid[ROWS-2][2]=p;
+    const moved=doGravityStep();
+    const landed=grid[ROWS-1][2]===p&&p.squashMs>0;
+    const sound=ppc95Metrics.landSoundCalls-l0;const sparks=ppc95Metrics.sparkBursts-s0;
+    return {ok:!!(moved&&landed&&sound>=1&&sparks>=1),moved,landed,soundCalls:sound,sparkBursts:sparks,squashMs:p.squashMs};
+  }finally{
+    grid=saved.grid;clearGroups=saved.clearGroups;garbageBlocks=saved.garbageBlocks;garbageFallAnims=saved.garbageFallAnims;garbageQueue=saved.garbageQueue;garbageConversionJobs=saved.garbageConversionJobs;swapping=saved.swapping;fallAnim=saved.fallAnim;fallAccumulator=saved.fallAccumulator;waveQuietByTag=saved.waveQuietByTag;landingSparks=saved.landingSparks;ppc95ImpactFlashes=saved.flashes;audioEnabled=saved.audioEnabled;
+  }
+}
+if(!PPC94_TESTS.some(t=>t.id===18))PPC94_TESTS.push({id:18,name:'Landing Feedback Regression',run:ppc95AutoLandingFeedbackTest});
+window.__ppc94.tests=PPC94_TESTS.map(t=>({id:t.id,name:t.name}));
+window.__ppc94.version=PPC95_VERSION;
+
+// Capture-phase routing prevents the old V0.9.4 click handler from running the headless single test first.
+debugPanel?.addEventListener('click',e=>{
+  const test=e.target.closest('[data-ppc-test]');
+  if(test){e.preventDefault();e.stopImmediatePropagation();ppc95StartWatch(Number(test.dataset.ppcTest));return;}
+  const chain=e.target.closest('[data-ppc-chain]');
+  if(chain){e.preventDefault();e.stopImmediatePropagation();ppc95StartRealChain(Number(chain.dataset.ppcChain));return;}
+  const action=e.target.closest('[data-ppc-action]')?.dataset.ppcAction;
+  if(action==='chainStep'||action==='chainStop'){
+    e.preventDefault();e.stopImmediatePropagation();
+    if(action==='chainStop')ppc95StopWatch(true);
+    else if(ppc95Watch?.kind==='realChain'){ppc95Watch.speed=.25;ppc95SyncSpeedButton();}
+  }
+},true);
+
+ppc95WatchSpeed?.addEventListener('click',()=>{
+  if(!ppc95Watch)return;const speeds=[.25,.5,1,1.5,2];let i=speeds.findIndex(v=>Math.abs(v-ppc95Watch.speed)<.01);ppc95Watch.speed=speeds[(i+1)%speeds.length];ppc95SyncSpeedButton();
+});
+ppc95WatchReplay?.addEventListener('click',()=>{
+  const w=ppc95Watch;if(!w)return;if(w.kind==='realChain')ppc95StartRealChain(w.data.target);else ppc95StartWatch(w.id);
+});
+ppc95WatchBack?.addEventListener('click',()=>ppc95StopWatch(true));
+
+window.__ppc95={
+  version:PPC95_VERSION,
+  watch:ppc95StartWatch,
+  realChain:ppc95StartRealChain,
+  stop:()=>ppc95StopWatch(true),
+  metrics:()=>({...ppc95Metrics,activeSparks:landingSparks.length,impactFlashes:ppc95ImpactFlashes.length}),
+  runAll:()=>ppc94RunAll()
+};
+console.info('[Panel Puzzle] V0.9.5 Visual Mechanics QA active',window.__ppc95);
 
 })();
 </script>
