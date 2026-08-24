@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Panel Puzzle V0.9.4 — PPC Mechanics Test Lab</title>
+<title>Panel Puzzle V0.9.4.1 — PPC Mechanics Test Lab</title>
 <style>
 :root{
   --bg:#0c0c0d;
@@ -725,7 +725,7 @@ body.battle-view .battle-debug.qa-open{display:block}
 .battle-debug{z-index:75!important}
 
 /* ============================================================
-   V0.9.4 // PPC MECHANICS TEST LAB
+   V0.9.4.1 // PPC MECHANICS TEST LAB
    ============================================================ */
 .debug{
   width:min(570px,calc(100vw - 28px));
@@ -846,7 +846,7 @@ body.battle-view .battle-debug.qa-open{display:block}
 <main class="app">
   <header class="topbar">
     <div>
-      <h1>PANEL PUZZLE V0.9.4</h1>
+      <h1>PANEL PUZZLE V0.9.4.1</h1>
       <div class="subtitle">BATTLE SANDBOX · AI + Versus + Garbage Exchange</div>
     </div>
 
@@ -885,7 +885,7 @@ body.battle-view .battle-debug.qa-open{display:block}
     <div class="layer show" id="menuLayer">
       <div class="menu-card">
         <h2>ELSEWHERE // PLAYGROUND</h2>
-        <p class="eyebrow">V0.9.4 · PPC CORE + MECHANICS TEST LAB</p>
+        <p class="eyebrow">V0.9.4.1 · PPC CORE + MECHANICS TEST LAB</p>
 
         <div class="mode-grid">
           <button class="mode-btn active" data-mode="endless">ENDLESS</button>
@@ -1110,7 +1110,7 @@ body.battle-view .battle-debug.qa-open{display:block}
   </section>
 
   <section class="garbage-lab" id="garbageLab">
-    <h3>GARBAGE LAB // V0.9.4</h3>
+    <h3>GARBAGE LAB // V0.9.4.1</h3>
     <p>Simula attacchi VS senza nemico. I garbage entrano dalla coda, cadono come oggetti rigidi e reagiscono ai match adiacenti.</p>
 
     <div class="lab-row" aria-label="Garbage type">
@@ -1148,7 +1148,7 @@ body.battle-view .battle-debug.qa-open{display:block}
   </section>
 
   <div class="version">
-    F2 apre il PPC Mechanics Test Lab. V0.9.4: PPC core attivo · automatic regression suite · chain stress.
+    F2 apre il PPC Mechanics Test Lab. V0.9.4.1: PPC core attivo · automatic regression suite · chain stress.
   </div>
 </main>
 
@@ -1172,7 +1172,7 @@ body.battle-view .battle-debug.qa-open{display:block}
     <div class="ppc94-lab-head">
       <div>
         <h4>PPC MECHANICS TEST LAB</h4>
-        <span>V0.9.4 // deterministic regression harness</span>
+        <span>V0.9.4.1 // deterministic regression harness</span>
       </div>
       <span class="ppc94-gate" id="ppc94Gate">GATE —</span>
     </div>
@@ -1221,7 +1221,7 @@ body.battle-view .battle-debug.qa-open{display:block}
       <div class="ppc94-chain-result" id="ppc94ChainResult">CHAIN STRESS — not run</div>
     </div>
 
-    <pre class="ppc94-status" id="ppc94TestStatus">PPC V0.9.4 QA ready.
+    <pre class="ppc94-status" id="ppc94TestStatus">PPC V0.9.4.1 QA ready.
 Run a single test or RUN ALL.</pre>
   </section>
 </aside>
@@ -4194,7 +4194,7 @@ async function copyQaSnapshot(){
   if(!s) return;
 
   const payload={
-    version:'0.9.4',
+    version:'0.9.4.1',
     timestamp:new Date().toISOString(),
     player:s.player.debugSnapshot(),
     enemy:s.enemy.debugSnapshot(),
@@ -8620,7 +8620,7 @@ window.__battleDebug={
 };
 
 window.__v085Debug={
-  version:'0.9.4',
+  version:'0.9.4.1',
   touchState:()=>touchDrag ? {...touchDrag} : null,
   ppcReference:()=>({...PPC_MECHANICS_REFERENCE}),
   arcadeLockSnapshot:()=>{
@@ -8639,7 +8639,7 @@ window.__v085Debug={
       }
     }
     return {
-      version:'0.9.4',
+      version:'0.9.4.1',
       swapping:!!swapping,
       clearGroups:clearGroups.length,
       fallAnim:fallAnim.length,
@@ -8715,7 +8715,7 @@ updateGarbageLabStatus();
 showMenu();
 requestAnimationFrame(loop);
 /* ============================================================
-   PANEL PUZZLE V0.9.4 — PPC CORE MECHANICS KERNEL
+   PANEL PUZZLE V0.9.4.1 — PPC CORE MECHANICS KERNEL
    Integrated mechanics kernel carried forward from the validated V0.9.3 pass.
    ROM-derived core rules:
    - panel-local hover/fall state
@@ -8730,7 +8730,7 @@ requestAnimationFrame(loop);
    ============================================================ */
 
 const PPC93_RUNTIME_PATCH = true;
-const PPC93_VERSION = '0.9.4';
+const PPC93_VERSION = '0.9.4.1';
 const PPC93_FRAME_MS = 1000 / 59.7275;
 const PPC93_HOVER_TICKS = [14,13,12,11,10,9,8,8,7,7];
 const PPC93_POP_TICKS = [9,9,8,8,8,8,8,7,7,7];
@@ -8945,7 +8945,8 @@ function ppc93ArcadeUnsupportedSegments(){
   return out;
 }
 
-fallingSegments = ppc93ArcadeUnsupportedSegments;
+// V0.9.4.1 HOTFIX: Arcade non dichiara un simbolo globale fallingSegments.
+// Il kernel PPC usa direttamente ppc93ArcadeUnsupportedSegments().
 
 updatePanelTimers = function(dt){
   ppc93NormalizeArcadeGrid();
@@ -9891,14 +9892,14 @@ window.__ppc93 = {
   })
 };
 
-console.info('[Panel Puzzle] V0.9.4 PPC Core + Mechanics Test Lab active',window.__ppc93);
+console.info('[Panel Puzzle] V0.9.4.1 PPC Core + Mechanics Test Lab active',window.__ppc93);
 
 
 // ============================================================
-// V0.9.4 // PPC MECHANICS TEST LAB
+// V0.9.4.1 // PPC MECHANICS TEST LAB
 // Deterministic tests target the patched PPC kernel directly.
 // ============================================================
-const PPC94_VERSION='0.9.4';
+const PPC94_VERSION='0.9.4.1';
 const ppc94Results=new Map();
 let ppc94LastReport='';
 let ppc94ShowcaseTimer=null;
@@ -10503,7 +10504,7 @@ window.__ppc94={
   stopShowcase:ppc94StopShowcase
 };
 
-console.info('[Panel Puzzle] V0.9.4 PPC Mechanics Test Lab ready',window.__ppc94);
+console.info('[Panel Puzzle] V0.9.4.1 PPC Mechanics Test Lab ready',window.__ppc94);
 
 })();
 </script>
