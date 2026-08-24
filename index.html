@@ -8523,6 +8523,1184 @@ reset();
 updateGarbageLabStatus();
 showMenu();
 requestAnimationFrame(loop);
+/* ============================================================
+   PANEL PUZZLE V0.9.3 — PPC CORE MECHANICS PASS
+   Runtime override injected into V0.9.2.2 stable.
+   ROM-derived core rules:
+   - panel-local hover/fall state
+   - 1 cell / GBC update gravity after hover
+   - logical swap commits immediately; visual swap lasts 4 GBC ticks
+   - landing is match-ready immediately
+   - causal chain lineage (no arbitrary landing grace)
+   - clear is visually sequential, logically atomic
+   - garbage converts/release row-by-row with local post timer
+   - top-out is a conditional danger counter that resets when top clears
+   Exact PPC internal intensity -> game-mode mapping remains provisional.
+   ============================================================ */
+
+const PPC93_RUNTIME_PATCH = true;
+const PPC93_VERSION = '0.9.3';
+const PPC93_FRAME_MS = 1000 / 59.7275;
+const PPC93_HOVER_TICKS = [14,13,12,11,10,9,8,8,7,7];
+const PPC93_POP_TICKS = [9,9,8,8,8,8,8,7,7,7];
+const PPC93_POST_GARBAGE_TICKS = [48,42,36,30,24,19,15,12,9,5];
+const PPC93_TOP_OUT_TICKS = [180,150,120,97,75,60,45,30,15,0];
+
+function ppc93Index(level=currentLevel){
+  return clamp(Math.round((clamp(Number(level)||1,1,20)-1)*9/19),0,9);
+}
+
+function ppc93ClearLeadTicks(i){
+  return Math.round(50 + (34-50)*(i/9));
+}
+
+function ppc93ClearFaceTicks(i){
+  return Math.round(20 + (10-20)*(i/9));
+}
+
+const ppc93BaseDifficultyConfig = difficultyConfig;
+difficultyConfig = function(level=currentLevel){
+  const base = ppc93BaseDifficultyConfig(level);
+  const i = ppc93Index(level);
+  const leadTicks = ppc93ClearLeadTicks(i);
+  const faceTicks = ppc93ClearFaceTicks(i);
+  const popTicks = PPC93_POP_TICKS[i];
+  const topTicks = PPC93_TOP_OUT_TICKS[i];
+  return {
+    ...base,
+    ppcIndex:i,
+    ppcFrameMs:PPC93_FRAME_MS,
+    hoverTicks:PPC93_HOVER_TICKS[i],
+    hoverMs:PPC93_HOVER_TICKS[i]*PPC93_FRAME_MS,
+    fallStepMs:PPC93_FRAME_MS,
+    landDelayMs:0,
+    swapMs:4*PPC93_FRAME_MS,
+    // These two ROM-derived stages are preserved as timing phases;
+    // their exact visual labels remain intentionally neutral.
+    blinkCount:4,
+    blinkIntervalMs:(leadTicks*PPC93_FRAME_MS)/4,
+    prePopHoldMs:faceTicks*PPC93_FRAME_MS,
+    clearStepDelay:popTicks*PPC93_FRAME_MS,
+    clearPopMs:PPC93_FRAME_MS,
+    garbageCellMs:popTicks*PPC93_FRAME_MS,
+    postGarbageTicks:PPC93_POST_GARBAGE_TICKS[i],
+    postGarbageMs:PPC93_POST_GARBAGE_TICKS[i]*PPC93_FRAME_MS,
+    topOutGraceTicks:topTicks,
+    topOutGraceMs:topTicks*PPC93_FRAME_MS
+  };
+};
+
+function ppc93NormalizePanel(panel){
+  if(!panel) return panel;
+  if(panel.chainTag==null) panel.chainTag=0;
+  if(panel.hoverMs===undefined) panel.hoverMs=null;
+  if(panel.settleMs===undefined) panel.settleMs=0;
+  if(panel.squashMs===undefined) panel.squashMs=0;
+  if(panel.ppcFallActive===undefined) panel.ppcFallActive=false;
+  if(panel.postGarbageMs===undefined) panel.postGarbageMs=0;
+  return panel;
+}
+
+const ppc93BaseMakePanel = makePanel;
+makePanel = function(type){
+  return ppc93NormalizePanel(ppc93BaseMakePanel(type));
+};
+
+if(typeof makeConvertedPanel === 'function'){
+  const ppc93BaseMakeConvertedPanel = makeConvertedPanel;
+  makeConvertedPanel = function(type,depth){
+    const p = ppc93NormalizePanel(ppc93BaseMakeConvertedPanel(type,depth));
+    const cfg = difficultyConfig();
+    p.postGarbageMs = cfg.postGarbageMs;
+    p.hoverMs = null;
+    p.settleMs = 0;
+    p.ppcFallActive = false;
+    if(depth>0) p.chainTag = Math.max(p.chainTag||0,depth);
+    return p;
+  };
+}
+
+function ppc93NormalizeArcadeGrid(){
+  if(!Array.isArray(grid)) return;
+  for(const row of grid){
+    if(!Array.isArray(row)) continue;
+    for(const p of row) ppc93NormalizePanel(p);
+  }
+}
+ppc93NormalizeArcadeGrid();
+fallAnim=[];
+fallAccumulator=0;
+
+function ppc93ArcadeSwapLocksCell(r,c){
+  return !!swapping && swapping.r===r && (swapping.c===c || swapping.c+1===c);
+}
+
+function ppc93ArcadePanelLocked(r,c,panel=grid?.[r]?.[c]){
+  if(!panel) return false;
+  if(clearingHas(r,c)) return true;
+  if(garbageBlockAt(r,c)) return true;
+  if(ppc93ArcadeSwapLocksCell(r,c)) return true;
+  if((panel.postGarbageMs||0)>0) return true;
+  return false;
+}
+
+function ppc93ArcadeCanMoveByGravity(r,c,panel=grid?.[r]?.[c]){
+  if(!panel || r>=ROWS-1) return false;
+  if(ppc93ArcadePanelLocked(r,c,panel)) return false;
+  return !cellSolid(r+1,c);
+}
+
+function ppc93ArcadeHasActiveCausalMotion(tag=null){
+  if(clearGroups.length || garbageConversionJobs.length) return true;
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const p=grid[r][c];
+      if(!p) continue;
+      if(tag!=null && (p.chainTag||0)!==tag) continue;
+      if(p.ppcFallActive) return true;
+      if(p.hoverMs!==null) return true;
+      if((p.postGarbageMs||0)>0) return true;
+      if(ppc93ArcadeCanMoveByGravity(r,c,p)) return true;
+    }
+  }
+  return false;
+}
+
+function ppc93ArcadeApplyLogicalSwap(state){
+  if(!state || state.ppcLogicalCommitted) return;
+  const {r,c,left,right}=state;
+  grid[r][c]=right;
+  grid[r][c+1]=left;
+  if(right){
+    ppc93NormalizePanel(right);
+    right.settleMs=0;
+  }
+  if(left){
+    ppc93NormalizePanel(left);
+    left.settleMs=0;
+  }
+  state.ppcLogicalCommitted=true;
+}
+
+const ppc93BaseSwap = swap;
+swap = function(){
+  ppc93BaseSwap();
+  if(swapping){
+    swapping.durationMs = swapping.durationMs || difficultyConfig().swapMs;
+    ppc93ArcadeApplyLogicalSwap(swapping);
+  }
+};
+
+if(typeof advanceContinuousTouchDrag === 'function'){
+  const ppc93BaseAdvanceContinuousTouchDrag = advanceContinuousTouchDrag;
+  advanceContinuousTouchDrag = function(){
+    const before = swapping;
+    ppc93BaseAdvanceContinuousTouchDrag();
+    if(swapping && swapping!==before){
+      swapping.durationMs = swapping.durationMs || Math.max(
+        PPC93_FRAME_MS,
+        difficultyConfig().swapMs*(1-(swapping.startProgress||0))
+      );
+      ppc93ArcadeApplyLogicalSwap(swapping);
+    }
+  };
+}
+
+canSwapCell = function(r,c){
+  if(r<FIRST_VISIBLE_ROW || r>=ROWS || c<0 || c>=COLS) return false;
+  if(clearingHas(r,c)) return false;
+  if(garbageBlockAt(r,c)) return false;
+  if(ppc93ArcadeSwapLocksCell(r,c)) return false;
+  const p=grid[r][c];
+  if(!p) return true;
+  ppc93NormalizePanel(p);
+  if(p.hoverMs!==null && !p.ppcFallActive) return false; // hover locks; active falling remains swappable.
+  if((p.postGarbageMs||0)>0) return false;   // converted panel local lock.
+  return true;
+};
+
+// Normal PPC gravity has no slow per-cell presentation tween.
+updateFalling = function(){
+  if(fallAnim.length) fallAnim=[];
+};
+
+function ppc93ArcadeUnsupportedSegments(){
+  const out=[];
+  for(let c=0;c<COLS;c++){
+    let r=ROWS-2;
+    while(r>=0){
+      const p=grid[r][c];
+      if(!p || !ppc93ArcadeCanMoveByGravity(r,c,p)){
+        r--;
+        continue;
+      }
+      let top=r;
+      while(top-1>=0){
+        const above=grid[top-1][c];
+        if(!above) break;
+        if(ppc93ArcadePanelLocked(top-1,c,above)) break;
+        if(garbageBlockAt(top-1,c)) break;
+        top--;
+      }
+      const members=[];
+      for(let rr=top;rr<=r;rr++){
+        const mp=grid[rr][c];
+        if(mp) members.push({r:rr,panel:mp});
+      }
+      if(members.length) out.push({c,top,bottom:r,members});
+      r=top-1;
+    }
+  }
+  return out;
+}
+
+fallingSegments = ppc93ArcadeUnsupportedSegments;
+
+updatePanelTimers = function(dt){
+  ppc93NormalizeArcadeGrid();
+
+  // Local post-garbage readiness timer.
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const p=grid[r][c];
+      if(!p) continue;
+      if((p.postGarbageMs||0)>0){
+        p.postGarbageMs=Math.max(0,p.postGarbageMs-dt);
+      }
+      if(p.settleMs>0) p.settleMs=Math.max(0,p.settleMs-dt);
+      if(p.squashMs>0) p.squashMs=Math.max(0,p.squashMs-dt);
+    }
+  }
+
+  // PPC hover is local, but contiguous unsupported columns inherit/synchronize
+  // the same countdown. Only the initial unsupported release gets hover;
+  // once ppcFallActive, the column continues 1 cell per update without re-hover.
+  const segments=ppc93ArcadeUnsupportedSegments();
+  const memberIds=new Set();
+  for(const seg of segments){
+    let shared=Infinity;
+    let alreadyFalling=false;
+    for(const m of seg.members){
+      memberIds.add(m.panel.id);
+      ppc93NormalizePanel(m.panel);
+      alreadyFalling ||= !!m.panel.ppcFallActive;
+      if(m.panel.hoverMs!==null) shared=Math.min(shared,m.panel.hoverMs);
+    }
+    if(alreadyFalling){
+      for(const m of seg.members){
+        m.panel.hoverMs=0;
+        m.panel.ppcFallActive=true;
+      }
+      continue;
+    }
+    if(!Number.isFinite(shared)) shared=difficultyConfig().hoverMs;
+    shared=Math.max(0,shared-dt);
+    for(const m of seg.members){
+      m.panel.hoverMs=shared;
+      m.panel.settleMs=0;
+    }
+  }
+
+  // Supported panels are no longer in hover/fall. Keep lineage until the
+  // match pass gets one chance to consume it; updateChainEvent cleans stale lineage.
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const p=grid[r][c];
+      if(!p || memberIds.has(p.id)) continue;
+      if(!ppc93ArcadeCanMoveByGravity(r,c,p)){
+        p.hoverMs=null;
+        p.ppcFallActive=false;
+      }
+    }
+  }
+};
+
+doGravityStep = function(){
+  const segments=ppc93ArcadeUnsupportedSegments();
+  let moved=false;
+
+  // Bottom-up prevents a source cell from being overwritten by a lower segment.
+  segments.sort((a,b)=>b.bottom-a.bottom);
+  for(const seg of segments){
+    const bottom=seg.members[seg.members.length-1]?.panel;
+    if(!bottom) continue;
+    if(bottom.hoverMs===null || bottom.hoverMs>0) continue;
+    if(seg.bottom>=ROWS-1 || cellSolid(seg.bottom+1,seg.c)) continue;
+
+    // Revalidate all sources and target cells before moving the stack atomically.
+    let valid=true;
+    for(const m of seg.members){
+      if(grid[m.r][seg.c]!==m.panel){ valid=false; break; }
+    }
+    if(!valid) continue;
+
+    for(let i=seg.members.length-1;i>=0;i--){
+      const m=seg.members[i];
+      grid[m.r+1][seg.c]=m.panel;
+      grid[m.r][seg.c]=EMPTY;
+      m.panel.ppcFallActive=true;
+      m.panel.hoverMs=0;
+      m.panel.settleMs=0;
+    }
+
+    const newBottomRow=seg.bottom+1;
+    const landed=newBottomRow>=ROWS-1 || cellSolid(newBottomRow+1,seg.c);
+    if(landed){
+      for(const m of seg.members){
+        m.panel.ppcFallActive=false;
+        m.panel.hoverMs=null;
+        m.panel.settleMs=0;
+        m.panel.squashMs=78;
+      }
+      if(typeof emitLandingSparks==='function'){
+        emitLandingSparks(seg.c*TILE+TILE/2,boardY(newBottomRow)+TILE-3);
+      }
+      if(typeof soundLand==='function') soundLand();
+    }
+    moved=true;
+  }
+
+  if(moved && typeof primeImmediateChainCue==='function') primeImmediateChainCue();
+  return moved;
+};
+
+supportStackPotential = function(r,c){
+  if(r<0 || r>=ROWS || c<0 || c>=COLS) return false;
+  const p=grid[r][c];
+  if(!p || clearingHas(r,c) || (p.postGarbageMs||0)>0) return false;
+  if(p.ppcFallActive || p.hoverMs!==null) return false;
+  return !isUnsupported(r,c);
+};
+
+supportStackReady = supportStackPotential;
+
+isPotentialRunCell = function(r,c){
+  if(r<FIRST_VISIBLE_ROW || r>=ROWS || c<0 || c>=COLS) return false;
+  const p=grid[r][c];
+  if(!p) return false;
+  ppc93NormalizePanel(p);
+  if(clearingHas(r,c)) return false;
+  if(ppc93ArcadeSwapLocksCell(r,c)) return false;
+  if((p.postGarbageMs||0)>0) return false;
+  if(p.ppcFallActive || p.hoverMs!==null) return false;
+  if(isUnsupported(r,c)) return false;
+  return true;
+};
+
+isReadyMatchCell = isPotentialRunCell;
+
+hasTaggedWaveMotion = function(tag){
+  if(tag<=0) return false;
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const p=grid[r][c];
+      if(!p || (p.chainTag||0)!==tag) continue;
+      if(clearingHas(r,c)) return true;
+      if(p.ppcFallActive || p.hoverMs!==null) return true;
+      if((p.postGarbageMs||0)>0) return true;
+      if(isUnsupported(r,c)) return true;
+    }
+  }
+  return false;
+};
+
+function ppc93ArcadeMarkChainLineageAbove(r,c,depth){
+  for(let rr=r-1;rr>=0;rr--){
+    if(garbageBlockAt(rr,c)) break;
+    const p=grid[rr][c];
+    if(!p) continue;
+    ppc93NormalizePanel(p);
+    p.chainTag=Math.max(p.chainTag||0,depth);
+    p.hoverMs=null;
+    p.ppcFallActive=false;
+  }
+}
+markPanelsAboveForChain = ppc93ArcadeMarkChainLineageAbove;
+
+updateClearGroups = function(dt){
+  if(!clearGroups.length) return;
+  const finishedIds=[];
+
+  for(const group of clearGroups){
+    group.elapsed+=dt;
+    const cfg=group.cfg || difficultyConfig();
+    const blinkTotal=cfg.blinkCount*cfg.blinkIntervalMs;
+    const popSequenceStart=blinkTotal+cfg.prePopHoldMs;
+
+    for(const entry of group.entries){
+      const popAt=popSequenceStart+entry.index*cfg.clearStepDelay+cfg.clearPopMs;
+      if(entry.ppcPopped || group.elapsed<popAt) continue;
+
+      const {r,c,panel}=entry;
+      if(grid[r]?.[c]===panel){
+        if(typeof emitPopParticles==='function'){
+          emitPopParticles(c*TILE+TILE/2,boardY(r)+TILE/2,panel.type);
+        }
+        if(typeof emitFoliageBurst==='function'){
+          emitFoliageBurst(c*TILE+TILE/2,boardY(r)+TILE/2,panel.type);
+        }
+        if(typeof soundPop==='function') soundPop(chainEvent.audioPopIndex++);
+      }
+      entry.ppcPopped=true;
+      // IMPORTANT: panel remains in grid and remains a real support until
+      // the entire clear group has finished visually.
+      addClearedPanelsToProgress(1);
+    }
+
+    if(group.entries.every(e=>e.ppcPopped)){
+      // First stamp lineage onto panels that are about to lose support.
+      for(const entry of group.entries){
+        ppc93ArcadeMarkChainLineageAbove(entry.r,entry.c,group.depth);
+      }
+      // Then remove the whole matched group atomically.
+      for(const entry of group.entries){
+        if(grid[entry.r]?.[entry.c]===entry.panel) grid[entry.r][entry.c]=EMPTY;
+        entry.done=true;
+      }
+
+      if(group.garbageTargets?.length){
+        scheduleGarbageConversion(group.garbageTargets,group.depth);
+      }
+      finishedIds.push(group.id);
+    }
+  }
+
+  if(finishedIds.length){
+    clearGroups=clearGroups.filter(g=>!finishedIds.includes(g.id));
+    fallAccumulator=0;
+  }
+};
+
+function ppc93ArcadeCommitGarbageRow(job,row){
+  if(!row?.tokens?.length) return;
+  const touched=[...new Set(row.tokens.map(t=>t.blockId).filter(Boolean))];
+
+  // Shrink each rigid garbage block only if this is its current bottom row.
+  for(const id of touched){
+    const block=garbageBlockById(id);
+    if(!block) continue;
+    const currentBottom=block.row+block.height-1;
+    if(row.r===currentBottom){
+      block.height-=1;
+    }
+  }
+  garbageBlocks=garbageBlocks.filter(b=>b.height>0);
+
+  for(const token of row.tokens){
+    if(token.r<0 || token.r>=ROWS || token.c<0 || token.c>=COLS) continue;
+    const p=typeof makeConvertedPanel==='function'
+      ? makeConvertedPanel(token.type,job.depth)
+      : makePanel(token.type);
+    ppc93NormalizePanel(p);
+    p.chainTag=Math.max(p.chainTag||0,job.depth||0);
+    p.postGarbageMs=difficultyConfig().postGarbageMs;
+    p.hoverMs=null;
+    p.ppcFallActive=false;
+    grid[token.r][token.c]=p;
+  }
+  if(typeof soundGarbageRowRelease==='function') soundGarbageRowRelease(touched.length||1);
+}
+
+updateGarbageConversions = function(dt){
+  if(!garbageConversionJobs.length) return;
+  const cfg=difficultyConfig();
+
+  for(const job of garbageConversionJobs){
+    job.elapsed=(job.elapsed||0)+dt;
+    if(job.phase==='leadIn'){
+      // Preserve the old visual lead-in if present, but do not create a global physics lock.
+      if(job.elapsed>=(job.leadInMs||0)){
+        job.elapsed=0;
+        prepareGarbageConversionPlan(job);
+      }
+      continue;
+    }
+    if(job.phase==='rowGap'){
+      job.phase='reveal';
+      job.elapsed=0;
+      job.revealedInRow=0;
+    }
+    if(job.phase==='finalHold'){
+      job.phase='done';
+      continue;
+    }
+    if(job.phase!=='reveal') continue;
+
+    const row=job.rows?.[job.rowIndex];
+    if(!row){ job.phase='done'; continue; }
+    const cellMs=cfg.garbageCellMs;
+    while(job.revealedInRow<row.tokens.length && job.elapsed>=cellMs){
+      job.elapsed-=cellMs;
+      const token=row.tokens[job.revealedInRow++];
+      if(typeof soundGarbageCellConvert==='function'){
+        soundGarbageCellConvert(token.type,job.soundIndex++);
+      }
+    }
+    if(job.revealedInRow>=row.tokens.length){
+      ppc93ArcadeCommitGarbageRow(job,row);
+      job.rowIndex+=1;
+      job.revealedInRow=0;
+      job.elapsed=0;
+      job.phase=(job.rowIndex>=job.rows.length)?'done':'reveal';
+    }
+  }
+
+  garbageConversionJobs=garbageConversionJobs.filter(j=>j.phase!=='done');
+  if(typeof updateGarbageLabStatus==='function') updateGarbageLabStatus();
+};
+
+function ppc93ArcadeExpireStableLineage(){
+  const readyIds=new Set();
+  for(const comp of findMatchComponents()){
+    if(!comp.ready) continue;
+    for(const cell of comp.cells){
+      if(cell.panel) readyIds.add(cell.panel.id);
+    }
+  }
+
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const p=grid[r][c];
+      if(!p || !(p.chainTag>0)) continue;
+      if(readyIds.has(p.id)) continue;
+      if(clearingHas(r,c)) continue;
+      if(p.ppcFallActive || p.hoverMs!==null) continue;
+      if((p.postGarbageMs||0)>0) continue;
+      if(isUnsupported(r,c)) continue;
+      // PPC consumes lineage if the panel stabilizes without producing a match.
+      p.chainTag=0;
+    }
+  }
+}
+
+function ppc93ArcadeAnyLineage(){
+  for(const row of grid){
+    for(const p of row){
+      if(p?.chainTag>0) return true;
+    }
+  }
+  return false;
+}
+
+updateChainEvent = function(dt){
+  if(eventResultDisplayMs>0){
+    eventResultDisplayMs=Math.max(0,eventResultDisplayMs-dt);
+    if(eventResultDisplayMs===0) updateUI();
+  }
+  ppc93ArcadeExpireStableLineage();
+  if(!chainEvent.active) return;
+
+  const pending=findMatchComponents().some(c=>c.ready);
+  const causal=
+    clearGroups.length>0 ||
+    garbageConversionJobs.length>0 ||
+    ppc93ArcadeHasActiveCausalMotion() ||
+    ppc93ArcadeAnyLineage();
+
+  if(pending || causal) return;
+
+  lastClosedEventScore=chainEvent.totalPoints;
+  const closedMaxChain=chainEvent.maxChain;
+  if(closedMaxChain>1 && typeof soundChainFanfare==='function'){
+    soundChainFanfare(closedMaxChain);
+  }
+  eventResultDisplayMs=1300;
+  clearAllChainTags();
+  chainEvent=newChainEvent();
+  updateUI();
+};
+
+function ppc93ArcadeTopOutFrozen(){
+  return (
+    clearGroups.length>0 ||
+    garbageConversionJobs.length>0 ||
+    garbageFallAnims.length>0 ||
+    anyGarbageCanFall() ||
+    ppc93ArcadeHasActiveCausalMotion()
+  );
+}
+
+checkTopOut = function(dt){
+  const cfg=difficultyConfig();
+  if(!bufferOccupied()){
+    topOutMs=0;
+    return;
+  }
+  if(ppc93ArcadeTopOutFrozen()) return; // freeze, never decay.
+  if(cfg.topOutGraceMs<=0){
+    triggerGameOver('topOut');
+    return;
+  }
+  topOutMs+=dt;
+  if(topOutMs>=cfg.topOutGraceMs) triggerGameOver('topOut');
+};
+
+
+// PPC match pass is board-concurrent: a swap only locks the two cells it
+// touches. Unrelated ready matches are still allowed to resolve while the
+// four-tick swap presentation is running elsewhere.
+updateMatchResolution = function(dt){
+  const components=findMatchComponents();
+
+  const readyNormal=components.filter(
+    c=>c.ready && c.inheritedTag===0
+  );
+  if(readyNormal.length){
+    resolveGeneration(readyNormal,0);
+    return;
+  }
+
+  const tags=[...new Set(
+    components
+      .filter(c=>c.inheritedTag>0)
+      .map(c=>c.inheritedTag)
+  )].sort((a,b)=>a-b);
+
+  for(const tag of tags){
+    const readyForTag=components.filter(
+      c=>c.ready && c.inheritedTag===tag
+    );
+    if(!readyForTag.length){
+      waveQuietByTag.delete(tag);
+      continue;
+    }
+    if(hasTaggedWaveMotion(tag)){
+      waveQuietByTag.set(tag,0);
+      continue;
+    }
+    waveQuietByTag.delete(tag);
+    resolveGeneration(readyForTag,tag);
+    return;
+  }
+
+  for(const tag of [...waveQuietByTag.keys()]){
+    const stillExists=components.some(c=>c.inheritedTag===tag);
+    if(!stillExists && !hasTaggedWaveMotion(tag)) waveQuietByTag.delete(tag);
+  }
+};
+
+// Replace only the scheduler, preserving the stable V0.9.2.2 ordering.
+// The old loop reset fallAccumulator to zero whenever it crossed fallStepMs;
+// at ~60 Hz that turns a 16.742 ms GBC tick into an accidental ~33 ms fall.
+// V0.9.3 subtracts the fixed tick and preserves fractional remainder.
+update = function(dt){
+  updateWorld(dt);
+  updateJuice(dt);
+
+  if(runPhase==='menu' || runPhase==='ended') return;
+  if(runPhase==='countdown'){
+    updateCountdown(dt);
+    return;
+  }
+  if(paused || gameOver) return;
+
+  gameMode.update(dt);
+  updateModeUI();
+
+  if(comboDisplayMs>0){
+    comboDisplayMs=Math.max(0,comboDisplayMs-dt);
+    if(comboDisplayMs===0) comboDisplay=0;
+  }
+  if(chainDisplayMs>0){
+    chainDisplayMs=Math.max(0,chainDisplayMs-dt);
+    if(chainDisplayMs===0){
+      chainDisplay=0;
+      updateUI();
+    }
+  }
+
+  const cfg=difficultyConfig();
+
+  if(swapping){
+    const swapDuration=swapping.durationMs || cfg.swapMs;
+    swapping.elapsed+=dt;
+    if(swapping.elapsed>=swapDuration) commitSwap();
+  }
+
+  updateClearGroups(dt);
+  updateGarbageConversions(dt);
+  updateGarbageQueue(dt);
+  updateGarbageGravity(dt);
+  updateFalling(dt);
+  updatePanelTimers(dt);
+
+  // GBC-rate normal gravity. Every physics tick can move an already-released
+  // panel exactly one logical row; hover is handled by its local countdown.
+  fallAccumulator+=dt;
+  let physicsGuard=0;
+  while(fallAccumulator>=PPC93_FRAME_MS && physicsGuard++<4){
+    fallAccumulator-=PPC93_FRAME_MS;
+    doGravityStep();
+  }
+  if(physicsGuard>=4 && fallAccumulator>PPC93_FRAME_MS*4){
+    // Never let a tab-resume spike fast-forward the board through many rows.
+    fallAccumulator%=PPC93_FRAME_MS;
+  }
+
+  // PPC ordering: physics/landing first, then the match pass. Swap cells are
+  // locally ineligible, not a reason to freeze unrelated cells on the board.
+  matchResolver.update(dt);
+  updateChainEvent(dt);
+
+  if(!gameMode.timeExpired){
+    updateRise(dt);
+    checkTopOut(dt);
+  }
+
+  if(
+    gameMode.isTimeAttack() &&
+    gameMode.timeExpired &&
+    timeAttackResolutionComplete()
+  ){
+    gameMode.awaitingResolution=false;
+    triggerGameOver('time');
+  }
+};
+
+// ============================================================
+// BATTLE ENGINE — SAME PPC CORE, NOT A LEGACY PHYSICS ISLAND
+// ============================================================
+if(typeof BattlePuzzleEngine === 'function'){
+  const BP=BattlePuzzleEngine.prototype;
+  const ppc93BattleBasePanel=BP.panel;
+  const ppc93BattleBaseReset=BP.reset;
+  const ppc93BattleBaseCommitSwap=BP.commitSwap;
+
+  BP.panel=function(type){
+    return ppc93NormalizePanel(ppc93BattleBasePanel.call(this,type));
+  };
+
+  BP.reset=function(){
+    ppc93BattleBaseReset.call(this);
+    this.fallTweens=[];
+    this.gravityMs=0;
+    this.topOutMs=0;
+    for(const row of this.grid) for(const p of row) ppc93NormalizePanel(p);
+  };
+
+  BP.ppcSwapLocksCell=function(r,c){
+    return !!this.swap && this.swap.r===r && (this.swap.c===c || this.swap.c+1===c);
+  };
+
+  BP.ppcClearingHas=function(r,c){
+    return !!this.clearWave?.cells?.some(cell=>cell.r===r && cell.c===c);
+  };
+
+  BP.ppcPanelLocked=function(r,c,p=this.grid?.[r]?.[c]){
+    if(!p) return false;
+    if(this.ppcClearingHas(r,c)) return true;
+    if(this.isGarbageAt(r,c)) return true;
+    if(this.ppcSwapLocksCell(r,c)) return true;
+    if((p.postGarbageMs||0)>0) return true;
+    return false;
+  };
+
+  BP.canSwapCell=function(r,c){
+    if(r<FIRST_VISIBLE_ROW || r>=ROWS || c<0 || c>=COLS) return false;
+    if(this.ppcClearingHas(r,c)) return false;
+    if(this.isGarbageAt(r,c)) return false;
+    if(this.ppcSwapLocksCell(r,c)) return false;
+    const p=this.grid[r][c];
+    if(!p) return true;
+    ppc93NormalizePanel(p);
+    if(p.hoverMs!==null && !p.ppcFallActive) return false;
+    if((p.postGarbageMs||0)>0) return false;
+    return true;
+  };
+
+  BP.canSwapPair=function(r,c){
+    return !this.dead && !this.paused && !this.swap &&
+      c>=0 && c<COLS-1 && r>=FIRST_VISIBLE_ROW && r<ROWS &&
+      this.canSwapCell(r,c) && this.canSwapCell(r,c+1) &&
+      (!!this.grid[r][c] || !!this.grid[r][c+1]);
+  };
+
+  BP.startSwap=function(r,c,startProgress=0){
+    if(!this.canSwapPair(r,c)) return false;
+    this.cursor={row:r,col:c};
+    const left=this.grid[r][c];
+    const right=this.grid[r][c+1];
+    const sp=clamp(startProgress,0,1);
+    this.swap={
+      r,c,left,right,
+      elapsed:0,
+      startProgress:sp,
+      duration:Math.max(PPC93_FRAME_MS,this.cfg().swapMs*(1-sp)),
+      ppcLogicalCommitted:true
+    };
+    // PPC logical commit occurs at swap start. The renderer still owns the
+    // original left/right references and animates them for four ticks.
+    this.grid[r][c]=right;
+    this.grid[r][c+1]=left;
+    if(right){ppc93NormalizePanel(right);right.settleMs=0;}
+    if(left){ppc93NormalizePanel(left);left.settleMs=0;}
+    return true;
+  };
+
+  // Original finalizer is idempotent after the immediate logical assignment
+  // and retains all touch-drag bookkeeping.
+  BP.commitSwap=function(){
+    return ppc93BattleBaseCommitSwap.call(this);
+  };
+
+  BP.ppcCanFall=function(r,c,p=this.grid?.[r]?.[c]){
+    if(!p || r>=ROWS-1) return false;
+    if(this.ppcPanelLocked(r,c,p)) return false;
+    return !this.solid(r+1,c);
+  };
+
+  BP.ppcSegments=function(){
+    const out=[];
+    for(let c=0;c<COLS;c++){
+      let r=ROWS-2;
+      while(r>=0){
+        const p=this.grid[r][c];
+        if(!p || !this.ppcCanFall(r,c,p)){r--;continue;}
+        let top=r;
+        while(top-1>=0){
+          const above=this.grid[top-1][c];
+          if(!above || this.ppcPanelLocked(top-1,c,above) || this.isGarbageAt(top-1,c)) break;
+          top--;
+        }
+        const members=[];
+        for(let rr=top;rr<=r;rr++){
+          const mp=this.grid[rr][c];
+          if(mp) members.push({r:rr,panel:mp});
+        }
+        if(members.length) out.push({c,top,bottom:r,members});
+        r=top-1;
+      }
+    }
+    return out;
+  };
+
+  BP.fallingSegments=function(){ return this.ppcSegments(); };
+  BP.anyPanelCanFall=function(){ return this.ppcSegments().length>0; };
+
+  BP.updatePanelTimers=function(dt){
+    for(const row of this.grid){
+      for(const p of row){
+        if(!p) continue;
+        ppc93NormalizePanel(p);
+        if((p.postGarbageMs||0)>0) p.postGarbageMs=Math.max(0,p.postGarbageMs-dt);
+        if(p.settleMs>0) p.settleMs=Math.max(0,p.settleMs-dt);
+        if(p.squashMs>0) p.squashMs=Math.max(0,p.squashMs-dt);
+      }
+    }
+    const segs=this.ppcSegments();
+    const ids=new Set();
+    for(const seg of segs){
+      let shared=Infinity,already=false;
+      for(const m of seg.members){
+        ids.add(m.panel.id);
+        already ||= !!m.panel.ppcFallActive;
+        if(m.panel.hoverMs!==null) shared=Math.min(shared,m.panel.hoverMs);
+      }
+      if(already){
+        for(const m of seg.members){m.panel.hoverMs=0;m.panel.ppcFallActive=true;}
+        continue;
+      }
+      if(!Number.isFinite(shared)) shared=this.cfg().hoverMs;
+      shared=Math.max(0,shared-dt);
+      for(const m of seg.members){m.panel.hoverMs=shared;m.panel.settleMs=0;}
+    }
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const p=this.grid[r][c];
+        if(!p || ids.has(p.id)) continue;
+        if(!this.ppcCanFall(r,c,p)){
+          p.hoverMs=null;
+          p.ppcFallActive=false;
+        }
+      }
+    }
+  };
+
+  BP.doGravityStep=function(){
+    const segs=this.ppcSegments().sort((a,b)=>b.bottom-a.bottom);
+    let moved=false;
+    for(const seg of segs){
+      const bottom=seg.members[seg.members.length-1]?.panel;
+      if(!bottom || bottom.hoverMs===null || bottom.hoverMs>0) continue;
+      if(seg.bottom>=ROWS-1 || this.solid(seg.bottom+1,seg.c)) continue;
+      let valid=true;
+      for(const m of seg.members){if(this.grid[m.r][seg.c]!==m.panel){valid=false;break;}}
+      if(!valid) continue;
+      for(let i=seg.members.length-1;i>=0;i--){
+        const m=seg.members[i];
+        this.grid[m.r+1][seg.c]=m.panel;
+        this.grid[m.r][seg.c]=null;
+        m.panel.ppcFallActive=true;
+        m.panel.hoverMs=0;
+        m.panel.settleMs=0;
+      }
+      const nr=seg.bottom+1;
+      const landed=nr>=ROWS-1 || this.solid(nr+1,seg.c);
+      if(landed){
+        for(const m of seg.members){
+          m.panel.ppcFallActive=false;
+          m.panel.hoverMs=null;
+          m.panel.settleMs=0;
+          m.panel.squashMs=78;
+        }
+        this.onEvent?.({type:'land',engine:this});
+      }
+      moved=true;
+    }
+    return moved;
+  };
+
+  BP.markAboveForChain=function(r,c,depth){
+    for(let rr=r-1;rr>=0;rr--){
+      if(this.isGarbageAt(rr,c)) break;
+      const p=this.grid[rr][c];
+      if(!p) continue;
+      ppc93NormalizePanel(p);
+      p.chainTag=Math.max(p.chainTag||0,depth);
+      p.hoverMs=null;
+      p.ppcFallActive=false;
+    }
+  };
+
+  BP.updateClear=function(dt){
+    if(!this.clearWave) return;
+    const wave=this.clearWave,cfg=this.cfg();
+    wave.elapsed+=dt;
+    const start=cfg.blinkCount*cfg.blinkIntervalMs+cfg.prePopHoldMs;
+
+    wave.cells.forEach((cell,index)=>{
+      if(wave.removed.has(cell.panel.id)) return;
+      const popAt=start+index*cfg.clearStepDelay+cfg.clearPopMs;
+      if(wave.elapsed<popAt) return;
+      if(this.grid[cell.r]?.[cell.c]===cell.panel){
+        if(typeof this.spawnPopFoliage==='function') this.spawnPopFoliage(cell.r,cell.c,cell.panel.type);
+        this.stats.cleared++;
+        this.onEvent?.({type:'pop',index:this.audioPopIndex++,depth:wave.depth,engine:this});
+      }
+      wave.removed.add(cell.panel.id);
+      // logical occupancy remains until the whole group is done.
+    });
+
+    if(wave.cells.every(cell=>wave.removed.has(cell.panel.id))){
+      for(const cell of wave.cells) this.markAboveForChain(cell.r,cell.c,wave.depth);
+      for(const cell of wave.cells){
+        if(this.grid[cell.r]?.[cell.c]===cell.panel) this.grid[cell.r][cell.c]=null;
+      }
+      if(wave.garbageTargets?.length) this.startGarbageConversion(wave.garbageTargets,wave.depth);
+      if(wave.attackSpecs?.length){
+        this.onAttack?.(wave.attackSpecs,{
+          combo:wave.combo,depth:wave.depth,engine:this,origin:wave.attackOrigin
+        });
+      }
+      this.clearWave=null;
+      this.gravityMs=0;
+    }
+  };
+
+  BP.startGarbageConversion=function(ids,depth){
+    const valid=ids.filter(id=>this.garbage.some(g=>g.id===id));
+    if(!valid.length || this.conversion) return;
+    const rows=[],rowMap=new Map();
+    for(const id of valid){
+      const g=this.garbage.find(x=>x.id===id);
+      if(!g) continue;
+      for(let local=g.h-1;local>=0;local--){
+        const r=g.row+local;
+        if(!rowMap.has(r)) rowMap.set(r,[]);
+        const types=this.conversionPattern(g,local);
+        for(let i=0;i<g.w;i++) rowMap.get(r).push({r,c:g.x+i,type:types[i],blockId:g.id});
+      }
+    }
+    for(const [r,tokens] of rowMap){
+      rows.push({r:Number(r),tokens:tokens.sort((a,b)=>a.c-b.c||a.blockId-b.blockId)});
+    }
+    rows.sort((a,b)=>b.r-a.r);
+    this.conversion={
+      ids:valid,depth,rows,rowIndex:0,revealed:0,doneTokens:[],elapsed:0,
+      phase:'reveal',lead:0,cell:this.cfg().garbageCellMs,rowGap:0,finalHold:0,soundIndex:0
+    };
+    this.onEvent?.({type:'conversionTrigger',engine:this});
+  };
+
+  BP.ppcCommitGarbageRow=function(cv,row){
+    const touched=[...new Set(row.tokens.map(t=>t.blockId).filter(Boolean))];
+    for(const id of touched){
+      const g=this.garbage.find(x=>x.id===id);
+      if(!g) continue;
+      if(row.r===g.row+g.h-1) g.h-=1;
+    }
+    this.garbage=this.garbage.filter(g=>g.h>0);
+    for(const t of row.tokens){
+      if(t.r<0||t.r>=ROWS||t.c<0||t.c>=COLS) continue;
+      const p=this.panel(t.type);
+      p.chainTag=Math.max(p.chainTag||0,cv.depth||0);
+      p.postGarbageMs=this.cfg().postGarbageMs;
+      p.hoverMs=null;
+      p.ppcFallActive=false;
+      this.grid[t.r][t.c]=p;
+    }
+    this.onEvent?.({type:'conversionRelease',count:touched.length||1,engine:this});
+  };
+
+  BP.updateConversion=function(dt){
+    const cv=this.conversion;
+    if(!cv) return;
+    cv.elapsed+=dt;
+    if(cv.phase!=='reveal') cv.phase='reveal';
+    const row=cv.rows[cv.rowIndex];
+    if(!row){this.conversion=null;return;}
+    const cellMs=this.cfg().garbageCellMs;
+    while(cv.revealed<row.tokens.length && cv.elapsed>=cellMs){
+      cv.elapsed-=cellMs;
+      const token=row.tokens[cv.revealed++];
+      this.onEvent?.({type:'conversionCell',panelType:token.type,index:cv.soundIndex++,engine:this});
+    }
+    if(cv.revealed>=row.tokens.length){
+      this.ppcCommitGarbageRow(cv,row);
+      cv.rowIndex+=1;
+      cv.revealed=0;
+      cv.elapsed=0;
+      if(cv.rowIndex>=cv.rows.length) this.conversion=null;
+    }
+  };
+
+  BP.ppcReadyMatchCells=function(){
+    return this.findMatchesOnGrid(this.grid,true) || [];
+  };
+
+  BP.ppcExpireStableLineage=function(readyCells=[]){
+    const readyIds=new Set(readyCells.map(x=>x.panel?.id).filter(Boolean));
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const p=this.grid[r][c];
+        if(!p || !(p.chainTag>0) || readyIds.has(p.id)) continue;
+        if(this.ppcClearingHas(r,c)) continue;
+        if(p.ppcFallActive || p.hoverMs!==null || (p.postGarbageMs||0)>0) continue;
+        if(this.ppcCanFall(r,c,p)) continue;
+        p.chainTag=0;
+      }
+    }
+  };
+
+  BP.ppcHasCausalMotion=function(){
+    if(this.clearWave || this.conversion) return true;
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const p=this.grid[r][c];
+        if(!p) continue;
+        if(p.chainTag>0 || p.ppcFallActive || p.hoverMs!==null || (p.postGarbageMs||0)>0) return true;
+        if(this.ppcCanFall(r,c,p)) return true;
+      }
+    }
+    return false;
+  };
+
+  BP.stableForMatch=function(){
+    return !this.swap && !this.clearWave && !this.garbageFallTweens.length && !this.ppcHasCausalMotion();
+  };
+
+  BP.ppcTopOutFrozen=function(){
+    return this.clearWave || this.conversion || this.garbageFallTweens.length ||
+      this.anyGarbageCanFall() || this.ppcHasCausalMotion();
+  };
+
+  BP.checkTopOut=function(dt){
+    if(!this.bufferOccupied()){
+      this.topOutMs=0;
+      return;
+    }
+    if(this.ppcTopOutFrozen()) return;
+    const limit=this.cfg().topOutGraceMs;
+    if(limit<=0){
+      this.dead=true;this.forceRise=false;this.onLose?.(this);return;
+    }
+    this.topOutMs+=dt;
+    if(this.topOutMs>=limit){
+      this.dead=true;this.forceRise=false;this.onLose?.(this);
+    }
+  };
+
+  BP.update=function(dt){
+    if(this.dead||this.paused) return;
+    this.updateFx?.(dt);
+    if(this.lastEvent.ms>0) this.lastEvent.ms=Math.max(0,this.lastEvent.ms-dt);
+
+    if(this.swap){
+      this.swap.elapsed+=dt;
+      if(this.swap.elapsed>=this.swap.duration) this.commitSwap();
+    }
+
+    this.updateClear(dt);
+    this.updateConversion(dt);
+    this.spawnQueuedGarbage();
+    this.updateGarbageGravity(dt);
+    this.updatePanelTimers(dt);
+
+    this.gravityMs+=dt;
+    const step=this.cfg().fallStepMs;
+    let guard=0;
+    while(this.gravityMs>=step && guard++<4){
+      this.gravityMs-=step;
+      this.doGravityStep();
+    }
+
+    // PPC match ordering: physics/landing -> input/swap state -> match pass.
+    // A running swap delays its own result until visual finalization, while
+    // unrelated physics remains concurrent.
+    if(!this.swap && !this.clearWave){
+      const cells=this.ppcReadyMatchCells();
+      if(cells.length){
+        this.beginMatch(cells);
+      }else{
+        this.ppcExpireStableLineage(cells);
+        if(!this.ppcHasCausalMotion() && this.audioChainActive){
+          this.onEvent?.({type:'chainEnd',maxChain:this.audioMaxChain,engine:this});
+          this.audioChainActive=false;
+          this.audioMaxChain=1;
+          this.audioPopIndex=0;
+        }
+      }
+    }
+
+    this.updateRise(dt);
+    this.checkTopOut(dt);
+  };
+}
+
+// Refresh any live battle panels after prototype patching.
+if(typeof battleSession!=='undefined' && battleSession){
+  for(const engine of [battleSession.player,battleSession.enemy]){
+    if(!engine) continue;
+    engine.fallTweens=[];
+    for(const row of engine.grid) for(const p of row) ppc93NormalizePanel(p);
+  }
+}
+
+window.__ppc93 = {
+  version:PPC93_VERSION,
+  frameMs:PPC93_FRAME_MS,
+  tables:{
+    hoverTicks:[...PPC93_HOVER_TICKS],
+    popTicks:[...PPC93_POP_TICKS],
+    postGarbageTicks:[...PPC93_POST_GARBAGE_TICKS],
+    topOutTicks:[...PPC93_TOP_OUT_TICKS]
+  },
+  intensityForLevel:ppc93Index,
+  config:(level=currentLevel)=>difficultyConfig(level),
+  arcadeState:()=>({
+    level:currentLevel,
+    ppcIndex:ppc93Index(currentLevel),
+    topOutMs,
+    clearGroups:clearGroups.length,
+    conversionJobs:garbageConversionJobs.length,
+    panels:grid.flat().filter(Boolean).map(p=>({
+      id:p.id,type:p.type,chainTag:p.chainTag||0,
+      hoverMs:p.hoverMs,fall:!!p.ppcFallActive,postGarbageMs:p.postGarbageMs||0
+    }))
+  })
+};
+
+console.info('[Panel Puzzle] V0.9.3 PPC Core Mechanics Pass active',window.__ppc93);
 
 })();
 </script>
